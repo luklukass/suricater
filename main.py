@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog  # Import the file dialog module
 import re
+import webbrowser  # Import the webrowser module
 
 # Function to handle rule selection
 def select_rule():
@@ -75,6 +76,8 @@ def choose_file_action():
             filtered_rules = rules.copy()  # Update the global filtered_rules
             rule_combobox['values'] = msg_values
 
+def open_documentation():
+    webbrowser.open('suricata-latest\index.html')
 # Create the main window
 root = tk.Tk()
 root.title("Suricater")
@@ -96,6 +99,7 @@ menu_bar.add_cascade(label="Help", menu=help_menu)
 # Add items to the File menu
 signatures_menu.add_command(label="Choose", command=choose_file_action)  # Added command
 signatures_menu.add_command(label="Create")
+help_menu.add_command(label="Documentation", command=open_documentation)
 help_menu.add_command(label="Info")
 
 # Initialize rules and msg_values
