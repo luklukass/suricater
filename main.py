@@ -1,12 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog  # Import the file dialog module
 import re
-
 
 # Function to handle rule selection
 def select_rule():
     selected_rule_index = rule_combobox.current()
-    if selected_rule_index != -1:
+    if selected_rule_index != -1 and selected_rule_index < len(filtered_rules):
         selected_rule = filtered_rules[selected_rule_index]
         rule_text.config(state=tk.NORMAL)  # Make the Text widget editable
         rule_text.delete("1.0", tk.END)  # Clear the Text widget
@@ -28,13 +28,11 @@ def select_rule():
         rule_text.config(state=tk.DISABLED)  # Make the Text widget read-only
         print("Selected Rule:", selected_rule)
 
-
 # Function to clear the search box when clicked
 def clear_search(event):
     if search_entry.get() == "Search":
         search_entry.delete(0, tk.END)
         update_combobox_options("")  # Reset the ComboBox to show all rules
-
 
 # Function to update ComboBox options based on the search text
 def update_combobox_options(search_text):
@@ -58,6 +56,24 @@ def update_combobox_options(search_text):
     global filtered_rules  # Define a global variable to store filtered rules
     filtered_rules = matching_rules  # Update filtered_rules with matching rules
 
+# Function to handle "Choose" menu item
+def choose_file_action():
+    global filtered_rules  # Use the global filtered_rules
+    file_path = filedialog.askopenfilename(title="Choose a File")
+    if file_path:
+        with open(file_path, 'r') as file:
+            rules.clear()
+            msg_values.clear()
+            for line in file:
+                if re.search(r'\bsid\b', line):
+                    # Remove leading '#' if it exists
+                    cleaned_line = line.lstrip('#').strip()
+                    rules.append(cleaned_line)
+                    match = re.search(r'msg:"([^"]+)"', cleaned_line)
+                    if match:
+                        msg_values.append(match.group(1))
+            filtered_rules = rules.copy()  # Update the global filtered_rules
+            rule_combobox['values'] = msg_values
 
 # Create the main window
 root = tk.Tk()
@@ -66,18 +82,25 @@ root.title("Suricater")
 # Set the initial window size
 root.geometry("800x500")
 
-# Add rules from a .rules file to a list, filtering lines containing "sid" but not "sids"
+# Create a menu bar
+menu_bar = tk.Menu(root)
+root.config(menu=menu_bar)
+
+# Create a File menu
+signatures_menu = tk.Menu(menu_bar, tearoff=0)
+help_menu = tk.Menu(menu_bar, tearoff=0)
+
+menu_bar.add_cascade(label="Signatures", menu=signatures_menu)
+menu_bar.add_cascade(label="Help", menu=help_menu)
+
+# Add items to the File menu
+signatures_menu.add_command(label="Choose", command=choose_file_action)  # Added command
+signatures_menu.add_command(label="Create")
+help_menu.add_command(label="Info")
+
+# Initialize rules and msg_values
 rules = []
-msg_values = []  # To store the "msg" values
-with open('suricata.rules', 'r') as file:
-    for line in file:
-        if re.search(r'\bsid\b', line):
-            # Remove leading '#' if it exists
-            cleaned_line = line.lstrip('#').strip()
-            rules.append(cleaned_line)
-            match = re.search(r'msg:"([^"]+)"', cleaned_line)
-            if match:
-                msg_values.append(match.group(1))
+msg_values = []
 
 # Store the original unfiltered rules
 filtered_rules = rules.copy()
