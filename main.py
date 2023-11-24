@@ -4,6 +4,17 @@ from tkinter import filedialog
 import re
 import webbrowser
 
+class SuricataRuleParser:
+    def __init__(self):
+        self.keyword_pattern = re.compile(r'content:"([^"]+)"')
+
+    def extract_payload_keywords(self, rule_text):
+        """
+        Extract all payload keywords from a Suricata rule.
+        """
+        matches = self.keyword_pattern.findall(rule_text)
+        return matches
+
 # Function to handle rule selection and display it
 def select_rule(event):
     selected_rule_index = rule_combobox.current()
@@ -13,22 +24,23 @@ def select_rule(event):
         rule_text.delete("1.0", tk.END)  # Clear the Text widget
         rule_text.insert(tk.END, selected_rule)  # Insert the selected rule
         rule_text.tag_configure("center", justify='center')
-
-		# Adjust the height of the Text widget based on the number of lines needed
-        # content = rule_text.get("1.0", "end")
-        # num_lines = len(content.split('\n')) + 4
-        # max_lines = 10  # Maximum number of lines
-        # num_lines_needed = min(num_lines, max_lines)
-        # rule_text.config(height=num_lines_needed)
-
         # Scroll to the top
         rule_text.yview_moveto(0.0)
 
         rule_text.tag_add("center", "1.0", "end")
         rule_text.config(state=tk.DISABLED)  # Make the Text widget read-only
-        # print("Selected Rule:", selected_rule)
 
-# Function to clear the search box when clicked
+        # Extract all payload keywords
+        payload_keywords = suricata_parser.extract_payload_keywords(selected_rule)
+        if payload_keywords:
+            # Clear the input_text field
+            input_text.delete("1.0", tk.END)
+            # Insert all payload keywords into the input_text field
+            for keyword in payload_keywords:
+                input_text.insert(tk.END, f"{keyword}\n")
+        else:
+            # If no payload keywords, display a blank input_text field
+            input_text.delete("1.0", tk.END)
 def clear_search(event):
     if search_entry.get() == "Search":
         search_entry.delete(0, tk.END)
@@ -102,7 +114,7 @@ help_menu.add_command(label="Info")
 # Initialize rules and msg_values
 rules = []
 msg_values = []
-
+suricata_parser = SuricataRuleParser()
 # Store the original unfiltered rules
 filtered_rules = rules.copy()
 
