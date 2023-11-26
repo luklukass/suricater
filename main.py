@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
+from tkinter import messagebox
 import re
 import webbrowser
 import ctypes
@@ -85,6 +86,26 @@ def open_documentation():
     webbrowser.open('suricata-latest\index.html')
 # Create the main window
 
+def export_rules():
+    search_text = search_entry.get().lower()
+    matching_rules = [rule for rule in rules if search_text in rule.lower()]
+
+    if not matching_rules:
+        messagebox.showinfo("Export", "No matching rules found.")
+        return
+
+    # Ask user for the file name and location
+    file_path = filedialog.asksaveasfilename(defaultextension=".rules", filetypes=[("Suricata Rules", "*.rules")])
+
+    if file_path:
+        try:
+            with open(file_path, 'w') as export_file:
+                for rule in matching_rules:
+                    export_file.write(rule + '\n')
+
+            messagebox.showinfo("Export Successful", f"The rules have been exported to {file_path}")
+        except Exception as e:
+            messagebox.showerror("Export Error", f"An error occurred during export: {str(e)}")
 
 root = tk.Tk()
 root.title("SURICATER")
@@ -111,6 +132,7 @@ menu_bar.add_cascade(label="Help", menu=help_menu)
 # Add items to the File menu
 signatures_menu.add_command(label="Choose", command=choose_file_action)
 signatures_menu.add_command(label="Create")
+signatures_menu.add_command(label="Export", command=export_rules)
 help_menu.add_command(label="Documentation", command=open_documentation)
 help_menu.add_command(label="Info")
 
