@@ -11,12 +11,18 @@ ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
 class SuricataRuleParser:
     def __init__(self):
-        self.keyword_pattern = re.compile(r'content:"([^"]+)"')
+        self.keyword_content = re.compile(r'content:"([^"]+)"')
+        self.keyword_nocase = re.compile(r'\bnocase\b')
 
-    def extract_payload_keywords(self, rule_text):
-        matches = self.keyword_pattern.findall(rule_text)
+    def extract_content(self, rule_text):
+        matches = self.keyword_content.findall(rule_text)
         return matches
 
+    def has_nocase(self, rule_text):
+        return bool(self.keyword_nocase.search(rule_text))
+
+
+# Function to handle rule selection and display it
 # Function to handle rule selection and display it
 def select_rule(event):
     selected_rule_index = rule_combobox.current()
@@ -31,20 +37,25 @@ def select_rule(event):
         rule_text.config(state=tk.DISABLED)
 
         # Extract all payload keywords
-        payload_keywords = suricata_parser.extract_payload_keywords(selected_rule)
+        payload_keywords = suricata_parser.extract_content(selected_rule)
+        nocase_info = "True" if suricata_parser.has_nocase(selected_rule) else "False"
+
+        content_text = ""
         if payload_keywords:
-            content_box.config(state=tk.NORMAL)
-            content_box.delete("1.0", tk.END)
-
             for keyword in payload_keywords:
-                content_box.insert(tk.END, f"{keyword}\n")
-            content_box.tag_add("center", "1.0", "end")
-            content_box.config(state=tk.DISABLED)
-        else:
-            content_box.config(state=tk.NORMAL)
-            content_box.delete("1.0", tk.END)
-            content_box.config(state=tk.DISABLED)
+                content_text += f"{keyword}\n"
 
+        content_box.config(state=tk.NORMAL)
+        content_box.delete("1.0", tk.END)
+        content_box.insert(tk.END, content_text)
+        content_box.tag_add("center", "1.0", "end")
+        content_box.config(state=tk.DISABLED)
+
+        # Update the nocase information
+        nocase_box.config(state=tk.NORMAL)
+        nocase_box.delete("1.0", tk.END)
+        nocase_box.insert(tk.END, nocase_info)
+        nocase_box.config(state=tk.DISABLED)
 def filter_rules(search_text):
     matching_msgs = []
     matching_rules = []
@@ -195,6 +206,15 @@ rule_text.config(yscrollcommand=rule_text_scrollbar.set)
 content_box_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=content_box.yview)
 content_box_scrollbar.grid(row=5, column=3, sticky='ns')
 content_box.config(yscrollcommand=content_box_scrollbar.set)
+
+# Create a Label widget for the nocase information
+nocase_label = tk.Label(root, text="Nocase:", font=("Helvetica", 10))
+nocase_label.grid(row=4, column=1, padx=7, sticky="w")
+
+# Create a Text widget for the nocase information
+nocase_box = tk.Text(root, wrap=tk.WORD, width=10, height=1, font=("Helvetica", 11))
+nocase_box.grid(row=5, column=1, padx=10, pady=(0, 10), sticky="nw")
+nocase_box.config(state=tk.DISABLED)
 
 # Scrollbar for input_text
 input_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=input_text.yview)
