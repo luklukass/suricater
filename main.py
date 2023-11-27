@@ -13,6 +13,8 @@ class SuricataRuleParser:
     def __init__(self):
         self.keyword_content = re.compile(r'content:"([^"]+)"')
         self.keyword_nocase = re.compile(r'\bnocase\b')
+        self.keyword_startwith = re.compile(r'\bstartwith\b')
+        self.keyword_endwith = re.compile(r'\bendwith\b')
 
     def extract_content(self, rule_text):
         matches = self.keyword_content.findall(rule_text)
@@ -20,6 +22,12 @@ class SuricataRuleParser:
 
     def has_nocase(self, rule_text):
         return bool(self.keyword_nocase.search(rule_text))
+
+    def has_startwith(self, rule_text):
+        return bool(self.keyword_startwith.search(rule_text))
+
+    def has_endwith(self, rule_text):
+        return bool(self.keyword_endwith.search(rule_text))
 
 
 # Function to handle rule selection and display it
@@ -39,6 +47,8 @@ def select_rule(event):
         # Extract all payload keywords
         payload_keywords = suricata_parser.extract_content(selected_rule)
         nocase_info = "True" if suricata_parser.has_nocase(selected_rule) else "False"
+        startwith_info = "True" if suricata_parser.has_startwith(selected_rule) else "False"
+        endwith_info = "True" if suricata_parser.has_endwith(selected_rule) else "False"
 
         content_text = ""
         if payload_keywords:
@@ -56,6 +66,16 @@ def select_rule(event):
         nocase_box.delete("1.0", tk.END)
         nocase_box.insert(tk.END, nocase_info)
         nocase_box.config(state=tk.DISABLED)
+
+        startwith_box.config(state=tk.NORMAL)
+        startwith_box.delete("1.0", tk.END)
+        startwith_box.insert(tk.END, startwith_info)
+        startwith_box.config(state=tk.DISABLED)
+
+        endwith_box.config(state=tk.NORMAL)
+        endwith_box.delete("1.0", tk.END)
+        endwith_box.insert(tk.END, endwith_info)
+        endwith_box.config(state=tk.DISABLED)
 def filter_rules(search_text):
     matching_msgs = []
     matching_rules = []
@@ -209,12 +229,31 @@ content_box.config(yscrollcommand=content_box_scrollbar.set)
 
 # Create a Label widget for the nocase information
 nocase_label = tk.Label(root, text="Nocase:", font=("Helvetica", 10))
-nocase_label.grid(row=4, column=1, padx=7, sticky="w")
+nocase_label.grid(row=5, column=1, padx=25, sticky="nw")
 
 # Create a Text widget for the nocase information
 nocase_box = tk.Text(root, wrap=tk.WORD, width=10, height=1, font=("Helvetica", 11))
-nocase_box.grid(row=5, column=1, padx=10, pady=(0, 10), sticky="nw")
+nocase_box.grid(row=5, column=1, pady=30, sticky="nw")
 nocase_box.config(state=tk.DISABLED)
+
+# Create a Label widget for the nocase information
+# Create a Label widget for the startwith information
+startwith_label = tk.Label(root, text="Startwith:", font=("Helvetica", 10))
+startwith_label.grid(row=5, column=1, sticky="n")
+
+# Create a Text widget for the startwith information
+startwith_box = tk.Text(root, wrap=tk.WORD, width=10, height=1, font=("Helvetica", 11))
+startwith_box.grid(row=5, column=1, pady=30, sticky="n")
+startwith_box.config(state=tk.DISABLED)
+
+# Create a Label widget for the endwith information
+endwith_label = tk.Label(root, text="Endwith:", font=("Helvetica", 10))
+endwith_label.grid(row=5, column=1,padx=30,  sticky="ne")
+
+# Create a Text widget for the endwith information
+endwith_box = tk.Text(root, wrap=tk.WORD, width=10, height=1, font=("Helvetica", 11))
+endwith_box.grid(row=5, column=1,pady=30,padx=10, sticky="ne")
+endwith_box.config(state=tk.DISABLED)
 
 # Scrollbar for input_text
 input_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=input_text.yview)
