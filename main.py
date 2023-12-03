@@ -287,7 +287,7 @@ depth_box.config(state=tk.DISABLED)
 
 # Scrollbar for input_text
 input_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=input_text.yview)
-input_text_scrollbar.grid(row=7, column=1, sticky='ns')
+input_text_scrollbar.grid(row=7, column=3, sticky='ns')
 input_text.config(yscrollcommand=input_text_scrollbar.set)
 
 # Configure row and column weights to make them resizable
