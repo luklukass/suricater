@@ -8,9 +8,10 @@ import ctypes
 
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
+
 class SuricataRuleParser:
     def __init__(self):
-        self.keyword_content = re.compile(r'content:"([^"]+)"')
+        self.keyword_content = re.compile(r'content:\s*"([^"]+)"')
         self.keyword_nocase = re.compile(r'\bnocase\b')
         self.keyword_startwith = re.compile(r'\bstartwith\b')
         self.keyword_endwith = re.compile(r'\bendwith\b')
@@ -19,6 +20,7 @@ class SuricataRuleParser:
         self.keyword_distance = re.compile(r'\bdistance:\s*(-?\d+)\b')
         self.keyword_within = re.compile(r'\bwithin:\s*(\d+)\b')
         self.keyword_isdataat = re.compile(r'\bisdataat:\s*(!?)(\d+)(?:,(\w+))?(\b|;|\s)')
+        self.keyword_pcre = re.compile(r'pcre:\s*"([^"]+)"')
 
     def extract_content(self, rule_text):
         matches = self.keyword_content.findall(rule_text)
@@ -54,7 +56,10 @@ class SuricataRuleParser:
         return [f"{match.group(1)}{match.group(2)}, {match.group(3)}" if match.group(
             3) else f"{match.group(1)}{match.group(2)}" for match in isdataat_matches] if isdataat_matches else []
 
-# Function to handle rule selection and display it
+    def extract_pcre(self, rule_text):
+        pcre = self.keyword_pcre.findall(rule_text)
+        return pcre
+
 # Function to handle rule selection and display it
 def select_rule(event):
     selected_rule_index = rule_combobox.current()
@@ -78,11 +83,17 @@ def select_rule(event):
         distance_values = suricata_parser.get_all_distance(selected_rule)
         within_values = suricata_parser.get_all_within(selected_rule)
         isdataat_values = suricata_parser.get_all_isdataat(selected_rule)
+        pcre_values = suricata_parser.extract_pcre(selected_rule)
 
         content_text = ""
         if payload_keywords:
             for keyword in payload_keywords:
                 content_text += f"{keyword}\n"
+
+        pcre_text = ""
+        if pcre_values:
+            for pcre in pcre_values:
+                pcre_text += f"{pcre}\n"
 
         content_box.config(state=tk.NORMAL)
         content_box.delete("1.0", tk.END)
@@ -138,6 +149,13 @@ def select_rule(event):
         isdataat_box.insert(tk.END, "; ".join(map(str, isdataat_values)))
         isdataat_box.tag_add("center", "1.0", "end")
         isdataat_box.config(state=tk.DISABLED)
+
+        pcre_box.config(state=tk.NORMAL)
+        pcre_box.delete("1.0", tk.END)
+        pcre_box.insert(tk.END, pcre_text)
+        pcre_box.tag_add("center", "1.0", "end")
+        pcre_box.config(state=tk.DISABLED)
+
 def filter_rules(search_text):
     matching_msgs = []
     matching_rules = []
@@ -174,7 +192,6 @@ def choose_file_action():
 
 def open_documentation():
     webbrowser.open('suricata-latest\index.html')
-# Create the main window
 
 def export_rules():
     search_text = search_entry.get().lower()
@@ -241,7 +258,7 @@ search_entry.grid(row=1, column=0, padx=10, pady=(0, 13), sticky="w")
 # Create a Combobox to select the "msg" option
 rules_label = tk.Label(root, text="Rules:", font=("Helvetica", 10))
 rules_label.grid(row=0, column=1, padx=10, sticky="w")
-rule_combobox = ttk.Combobox(root, values=msg_values, width=230,  font=("Helvetica", 11))
+rule_combobox = ttk.Combobox(root, values=msg_values, width=230, font=("Helvetica", 11))
 rule_combobox.grid(row=1, column=1, padx=10, pady=(0, 13), sticky="w")
 
 # Enable the search functionality
@@ -252,7 +269,7 @@ rule_label = tk.Label(root, text="Selected rule:", font=("Helvetica", 10))
 rule_label.grid(row=2, column=0, columnspan=3, padx=10, sticky="w")
 
 # Create a Text widget to display the selected rule
-rule_text = tk.Text(root, wrap=tk.WORD, width=400, height=15,  font=("Helvetica", 11))
+rule_text = tk.Text(root, wrap=tk.WORD, width=400, height=15, font=("Helvetica", 12))
 rule_text.grid(row=3, column=0, columnspan=3, padx=10, pady=(0, 13))
 rule_text.tag_configure("center", justify='center')
 rule_text.config(state=tk.DISABLED)
@@ -262,17 +279,9 @@ content_label = tk.Label(root, text="Content:", font=("Helvetica", 10))
 content_label.grid(row=4, column=0, padx=10, sticky="w")
 
 # Create a Text widget for the content_box
-content_box = tk.Text(root, wrap=tk.WORD, width=180, height=18, font=("Helvetica", 11))
+content_box = tk.Text(root, wrap=tk.WORD, width=180, height=18, font=("Helvetica", 12))
 content_box.grid(row=5, column=0, padx=10, pady=(0, 10), sticky="w")
 content_box.config(state=tk.DISABLED)
-
-# Create a Label widget for the input payload title
-input_label = tk.Label(root, text="Input payload:", font=("Helvetica", 10))
-input_label.grid(row=6, column=0, columnspan=3, padx=10, sticky="w")
-
-# Create an input field as a Text widget
-input_text = tk.Text(root, wrap=tk.WORD, width=400, height=16,  font=("Helvetica", 11))
-input_text.grid(row=7, column=0, columnspan=3, padx=10, pady=(0, 10))
 
 # Scrollbar for rule_text
 rule_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=rule_text.yview)
@@ -281,7 +290,7 @@ rule_text.config(yscrollcommand=rule_text_scrollbar.set)
 
 # Scrollbar for content_box
 content_box_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=content_box.yview)
-content_box_scrollbar.grid(row=5, column=3, sticky='ns')
+content_box_scrollbar.grid(row=5, column=0, sticky='e ns')
 content_box.config(yscrollcommand=content_box_scrollbar.set)
 
 # Create a Label widget for the nocase information
@@ -307,11 +316,11 @@ startwith_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the endwith information
 endwith_label = tk.Label(root, text="Endwith:", font=("Helvetica", 10))
-endwith_label.grid(row=5, column=1,padx=60,  sticky="ne")
+endwith_label.grid(row=5, column=1, padx=60, sticky="ne")
 
 # Create a Text widget for the endwith information
 endwith_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-endwith_box.grid(row=5, column=1,pady=30,padx=10, sticky="ne")
+endwith_box.grid(row=5, column=1, pady=30, padx=10, sticky="ne")
 endwith_box.tag_configure("center", justify='center')
 endwith_box.config(state=tk.DISABLED)
 
@@ -321,7 +330,7 @@ depth_label.grid(row=5, column=1, sticky="w", padx=60)  # Set row to 4 (or any a
 
 # Create a Text widget for the depth information
 depth_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-depth_box.grid(row=5, column=1, sticky="w",pady=(60,0))  # Set columnspan to 2 to make the box span two columns
+depth_box.grid(row=5, column=1, sticky="w", pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
 depth_box.tag_configure("center", justify='center')
 depth_box.config(state=tk.DISABLED)
 
@@ -331,49 +340,72 @@ offset_label.grid(row=5, column=1, padx=60)  # Set row to 4 (or any appropriate 
 
 # Create a Text widget for the offset information
 offset_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-offset_box.grid(row=5, column=1,pady=(60,0))  # Set columnspan to 2 to make the box span two columns
+offset_box.grid(row=5, column=1, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
 offset_box.tag_configure("center", justify='center')
 offset_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the distance information
 distance_label = tk.Label(root, text="Distance:", font=("Helvetica", 10))
-distance_label.grid(row=5, column=1,sticky="e", padx=58)  # Set row to 4 (or any appropriate row index)
+distance_label.grid(row=5, column=1, sticky="e", padx=58)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the distance information
 distance_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-distance_box.grid(row=5, column=1,sticky="e", pady=(60,0), padx=10)  # Set columnspan to 2 to make the box span two columns
+distance_box.grid(row=5, column=1, sticky="e", pady=(60, 0),
+                  padx=10)  # Set columnspan to 2 to make the box span two columns
 distance_box.tag_configure("center", justify='center')
 distance_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the within information
 within_label = tk.Label(root, text="Within:", font=("Helvetica", 10))
-within_label.grid(row=5, column=1,sticky="sw", padx=60, pady=30)  # Set row to 4 (or any appropriate row index)
+within_label.grid(row=5, column=1, sticky="sw", padx=60, pady=30)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the within information
 within_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-within_box.grid(row=5, column=1,sticky="sw")  # Set columnspan to 2 to make the box span two columns
+within_box.grid(row=5, column=1, sticky="sw")  # Set columnspan to 2 to make the box span two columns
 within_box.tag_configure("center", justify='center')
 within_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the isdataat information
 isdataat_label = tk.Label(root, text="Isdataat:", font=("Helvetica", 10))
-isdataat_label.grid(row=5, column=1,sticky="s", padx=60, pady=30)  # Set row to 4 (or any appropriate row index)
+isdataat_label.grid(row=5, column=1, sticky="s", padx=60, pady=30)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the isdataat information
 isdataat_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-isdataat_box.grid(row=5, column=1,sticky="s")  # Set columnspan to 2 to make the box span two columns
+isdataat_box.grid(row=5, column=1, sticky="s")  # Set columnspan to 2 to make the box span two columns
 isdataat_box.tag_configure("center", justify='center')
 isdataat_box.config(state=tk.DISABLED)
 
+# Create a Label widget for the pcre title
+pcre_label = tk.Label(root, text="Pcre:", font=("Helvetica", 10))
+pcre_label.grid(row=6, column=0, columnspan=3, padx=10, sticky="w")
+
+# Create a Text widget for the content_box
+pcre_box = tk.Text(root, wrap=tk.WORD, width=400, height=2, font=("Helvetica", 11))
+pcre_box.grid(row=7, column=0, columnspan=3, padx=10, pady=(0, 10))
+pcre_box.config(state=tk.DISABLED)
+
+# Scrollbar for pcre
+pcre_box_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=pcre_box.yview)
+pcre_box_scrollbar.grid(row=7, column=3, sticky='ns')
+pcre_box.config(yscrollcommand=pcre_box_scrollbar.set)
+
+# Create a Label widget for the input payload title
+input_label = tk.Label(root, text="Input payload:", font=("Helvetica", 10))
+input_label.grid(row=8, column=0, columnspan=3, padx=10, sticky="w")
+
+# Create an input field as a Text widget
+input_text = tk.Text(root, wrap=tk.WORD, width=400, height=16, font=("Helvetica", 11))
+input_text.grid(row=9, column=0, columnspan=3, padx=10, pady=(0, 10))
+
 # Scrollbar for input_text
 input_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=input_text.yview)
-input_text_scrollbar.grid(row=7, column=3, sticky='ns')
+input_text_scrollbar.grid(row=9, column=3, sticky='ns')
 input_text.config(yscrollcommand=input_text_scrollbar.set)
 
 # Configure row and column weights to make them resizable
 root.grid_rowconfigure(3, weight=1)
 root.grid_rowconfigure(5, weight=1)
-root.grid_rowconfigure(7, weight=1)
+root.grid_rowconfigure(9, weight=1)
 root.grid_columnconfigure(0, weight=1)
 root.grid_columnconfigure(1, weight=1)
 root.grid_columnconfigure(2, weight=1)
