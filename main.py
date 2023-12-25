@@ -8,19 +8,29 @@ import ctypes
 
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
-
 class SuricataRuleParser:
     def __init__(self):
-        self.keyword_content = re.compile(r'content:\s*"([^"]+)"')
-        self.keyword_nocase = re.compile(r'\bnocase\b')
-        self.keyword_startwith = re.compile(r'\bstartwith\b')
-        self.keyword_endwith = re.compile(r'\bendwith\b')
-        self.keyword_depth = re.compile(r'\bdepth:\s*(\d+)\b')
-        self.keyword_offset = re.compile(r'\boffset:\s*(\d+)\b')
-        self.keyword_distance = re.compile(r'\bdistance:\s*(-?\d+)\b')
-        self.keyword_within = re.compile(r'\bwithin:\s*(\d+)\b')
-        self.keyword_isdataat = re.compile(r'\bisdataat:\s*(!?)(\d+)(?:,(\w+))?(\b|;|\s)')
-        self.keyword_pcre = re.compile(r'pcre:\s*"([^"]+)"')
+        self.content_pattern = r'content:\s*"([^"]+)"'
+        self.nocase_pattern = r'\bnocase\b'
+        self.startwith_pattern = r'\bstartwith\b'
+        self.endwith_pattern = r'\bendwith\b'
+        self.depth_pattern = r'\bdepth:\s*(\d+)\b'
+        self.offset_pattern = r'\boffset:\s*(\d+)\b'
+        self.distance_pattern = r'\bdistance:\s*(-?\d+)\b'
+        self.within_pattern = r'\bwithin:\s*(\d+)\b'
+        self.isdataat_pattern = r'\bisdataat:\s*(!?)(\d+)(?:,(\w+))?(\b|;|\s)'
+        self.pcre_pattern = r'pcre:\s*"([^"]+)"'
+
+        self.keyword_content = re.compile(self.content_pattern)
+        self.keyword_nocase = re.compile(self.nocase_pattern)
+        self.keyword_startwith = re.compile(self.startwith_pattern)
+        self.keyword_endwith = re.compile(self.endwith_pattern)
+        self.keyword_depth = re.compile(self.depth_pattern)
+        self.keyword_offset = re.compile(self.offset_pattern)
+        self.keyword_distance = re.compile(self.distance_pattern)
+        self.keyword_within = re.compile(self.within_pattern)
+        self.keyword_isdataat = re.compile(self.isdataat_pattern)
+        self.keyword_pcre = re.compile(self.pcre_pattern)
 
     def extract_content(self, rule_text):
         matches = self.keyword_content.findall(rule_text)
@@ -60,6 +70,20 @@ class SuricataRuleParser:
         pcre = self.keyword_pcre.findall(rule_text)
         return pcre
 
+def convert_hex_to_ascii_content():
+    # Get the current content text
+    content_text = content_box.get("1.0", tk.END)
+
+    # Use a regular expression to find hex values and convert them
+    converted_text = re.sub(r'\|([0-9A-Fa-f]+(?: [0-9A-Fa-f]+)*)\|', lambda x: ''.join(chr(int(h, 16)) for h in x.group(1).split()), content_text)
+
+    # Update the content box with the converted text
+    content_box.config(state=tk.NORMAL)
+    content_box.delete("1.0", tk.END)
+    content_box.insert(tk.END, converted_text)
+    content_box.tag_add("center", "1.0", "end")
+    content_box.config(state=tk.DISABLED)
+
 # Function to handle rule selection and display it
 def select_rule(event):
     selected_rule_index = rule_combobox.current()
@@ -73,6 +97,7 @@ def select_rule(event):
         rule_text.tag_add("center", "1.0", "end")
         rule_text.config(state=tk.DISABLED)
 
+
         # Extract all payload keywords
         payload_keywords = suricata_parser.extract_content(selected_rule)
         nocase_info = "True" if suricata_parser.has_nocase(selected_rule) else "False"
@@ -84,6 +109,7 @@ def select_rule(event):
         within_values = suricata_parser.get_all_within(selected_rule)
         isdataat_values = suricata_parser.get_all_isdataat(selected_rule)
         pcre_values = suricata_parser.extract_pcre(selected_rule)
+
 
         content_text = ""
         if payload_keywords:
@@ -213,6 +239,9 @@ def export_rules():
             messagebox.showinfo("Export Successful", f"The rules have been exported to {file_path}")
         except Exception as e:
             messagebox.showerror("Export Error", f"An error occurred during export: {str(e)}")
+def convert_ascii_button_action():
+    select_rule(None)
+
 
 root = tk.Tk()
 root.title("SURICATER")
@@ -251,18 +280,23 @@ filtered_rules = rules.copy()
 search_label = tk.Label(root, text="Search:", font=("Helvetica", 10))
 search_label.grid(row=0, column=0, padx=10, sticky="w")
 
-# Create a search box Entry widget with a placeholder
-search_entry = tk.Entry(root, width=200, font=("Helvetica", 11))
-search_entry.grid(row=1, column=0, padx=10, pady=(0, 13), sticky="w")
 
 # Create a Combobox to select the "msg" option
 rules_label = tk.Label(root, text="Rules:", font=("Helvetica", 10))
 rules_label.grid(row=0, column=1, padx=10, sticky="w")
 rule_combobox = ttk.Combobox(root, values=msg_values, width=230, font=("Helvetica", 11))
-rule_combobox.grid(row=1, column=1, padx=10, pady=(0, 13), sticky="w")
+rule_combobox.grid(row=1, column=1, padx=10, pady=(0, 10), sticky="w")
 
 # Enable the search functionality
 rule_combobox['state'] = 'readonly'
+
+# Create a search box Entry widget with a placeholder
+search_entry = tk.Entry(root, width=80, font=("Helvetica", 11))
+search_entry.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="w")
+
+# search_button
+search_button = ttk.Button(root, text="Search", command= update_combobox_options(search_entry.get()), width=10)
+search_button.grid(row=1, column=0, padx=5, pady=(0, 10), sticky="e")
 
 # Create a Label widget for the selected rule title
 rule_label = tk.Label(root, text="Selected rule:", font=("Helvetica", 10))
@@ -292,6 +326,13 @@ rule_text.config(yscrollcommand=rule_text_scrollbar.set)
 content_box_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=content_box.yview)
 content_box_scrollbar.grid(row=5, column=0, sticky='e ns')
 content_box.config(yscrollcommand=content_box_scrollbar.set)
+
+# button from hex
+convert_content_button = ttk.Button(root, text="Hex to ASCII", command=convert_hex_to_ascii_content, width=17)
+convert_content_button.grid(row=5, column=1,  padx=5, pady=40, sticky="sw")
+# button to hex
+convert_ascii_button = ttk.Button(root, text="Refresh", command=convert_ascii_button_action, width=17)
+convert_ascii_button.grid(row=5, column=1, pady=(20, 0), padx=5, sticky="sw")
 
 # Create a Label widget for the nocase information
 nocase_label = tk.Label(root, text="Nocase:", font=("Helvetica", 10))
@@ -350,18 +391,17 @@ distance_label.grid(row=5, column=1, sticky="e", padx=58)  # Set row to 4 (or an
 
 # Create a Text widget for the distance information
 distance_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-distance_box.grid(row=5, column=1, sticky="e", pady=(60, 0),
-                  padx=10)  # Set columnspan to 2 to make the box span two columns
+distance_box.grid(row=5, column=1, sticky="e", pady=(60, 0),padx=10)  # Set columnspan to 2 to make the box span two columns
 distance_box.tag_configure("center", justify='center')
 distance_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the within information
 within_label = tk.Label(root, text="Within:", font=("Helvetica", 10))
-within_label.grid(row=5, column=1, sticky="sw", padx=60, pady=30)  # Set row to 4 (or any appropriate row index)
+within_label.grid(row=5, column=1, sticky="se", padx=65, pady=30)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the within information
 within_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-within_box.grid(row=5, column=1, sticky="sw")  # Set columnspan to 2 to make the box span two columns
+within_box.grid(row=5, column=1, sticky="se", pady=(60, 0),padx=10)  # Set columnspan to 2 to make the box span two columns
 within_box.tag_configure("center", justify='center')
 within_box.config(state=tk.DISABLED)
 
