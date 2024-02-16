@@ -1,12 +1,17 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog
-from tkinter import messagebox
+from tkinter import ttk, filedialog, messagebox
 import re
 import webbrowser
 import ctypes
 
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
+
+class PatternMatcher:
+    def __init__(self, pattern):
+        self.pattern = pattern
+
+    def match(self, text):
+        return re.search(self.pattern, text)
 
 class SuricataRuleParser:
     def __init__(self):
@@ -20,6 +25,7 @@ class SuricataRuleParser:
         self.within_pattern = r'\bwithin:\s*(\d+)\b'
         self.isdataat_pattern = r'\bisdataat:\s*(!?)(\d+)(?:,(\w+))?(\b|;|\s)'
         self.pcre_pattern = r'pcre:\s*"([^"]+)"'
+
 
         self.keyword_content = re.compile(self.content_pattern)
         self.keyword_nocase = re.compile(self.nocase_pattern)
@@ -97,6 +103,7 @@ def select_rule(event):
         rule_text.tag_add("center", "1.0", "end")
         rule_text.config(state=tk.DISABLED)
 
+        check_content()
 
         # Extract all payload keywords
         payload_keywords = suricata_parser.extract_content(selected_rule)
@@ -242,6 +249,65 @@ def export_rules():
 def convert_ascii_button_action():
     select_rule(None)
 
+def discover(selected_rule):
+    nocase_info = "True" if suricata_parser.has_nocase(selected_rule) else "False"
+    return nocase_info
+
+# Function to check content against the extracted pattern and highlight matching content
+def check_content(event=None):
+    input_text.tag_remove("match", "1.0", tk.END)
+
+    # Get the content from the input field
+    input_text_content = input_text.get("1.0", tk.END).strip()
+
+    # Get the selected rule text
+    selected_rule = rule_text.get("1.0", tk.END)
+
+    # Extract all content patterns from the rule (both ASCII and hex)
+    content_pattern_matches = re.findall(r'content:\s*"([^"]+)"', selected_rule)
+    hex_content_pattern_matches = re.findall(r'\|([0-9A-Fa-f]+(?: [0-9A-Fa-f]+)*)\|', selected_rule)
+
+    # Initialize a flag to track if any content pattern matches
+    content_matched = False
+
+    # Iterate through each ASCII content pattern and check if the content matches
+    for content_pattern in content_pattern_matches:
+        # Create a PatternMatcher object with the current content pattern
+        pattern_matcher = PatternMatcher(content_pattern)
+
+        # Check if the ASCII content matches the current pattern with case sensitivity
+        match = pattern_matcher.match(input_text_content)
+        if match:
+            start_index, end_index = match.span()
+            # Highlight the matching content in the input text field
+            input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
+            input_text.tag_config("match", background="yellow")
+            # Set the flag to True if any ASCII content pattern matches
+            content_matched = True
+            break  # Exit the loop if a match is found
+
+    if not content_matched:
+        # Try matching again with case insensitivity if nocase is true
+        nocase = suricata_parser.has_nocase(selected_rule)
+        if nocase:
+            for content_pattern in content_pattern_matches:
+                pattern_matcher = PatternMatcher(content_pattern)
+
+                # Check if the ASCII content matches the current pattern without case sensitivity
+                match = pattern_matcher.match(input_text_content.lower())
+                if match:
+                    start_index, end_index = match.span()
+                    # Highlight the matching content in the input text field
+                    input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
+                    input_text.tag_config("match", background="yellow")
+                    # Set the flag to True if any ASCII content pattern matches
+                    content_matched = True
+                    break  # Exit the loop if a match is found
+
+    # Display a message if no content pattern matches
+    if not content_matched:
+        return
+
 
 root = tk.Tk()
 root.title("SURICATER")
@@ -249,7 +315,7 @@ root.iconbitmap('assets/img/logo.ico')
 root.option_add("*TCombobox*Listbox.font", "Helevetica 10")
 
 # Set the initial window size
-root.minsize(900, 600)
+root.minsize(900, 900)
 root.geometry(f"1200x900")
 menu_font = ("Helvetica", 10)
 # Create a menu bar
@@ -336,7 +402,7 @@ convert_ascii_button.grid(row=5, column=1, pady=(20, 0), padx=5, sticky="sw")
 
 # Create a Label widget for the nocase information
 nocase_label = tk.Label(root, text="Nocase:", font=("Helvetica", 10))
-nocase_label.grid(row=5, column=1, padx=55, sticky="nw")
+nocase_label.grid(row=5, column=1, padx=40, sticky="nw")
 
 # Create a Text widget for the nocase information
 nocase_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
@@ -357,7 +423,7 @@ startwith_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the endwith information
 endwith_label = tk.Label(root, text="Endwith:", font=("Helvetica", 10))
-endwith_label.grid(row=5, column=1, padx=60, sticky="ne")
+endwith_label.grid(row=5, column=1, padx=40, sticky="ne")
 
 # Create a Text widget for the endwith information
 endwith_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
@@ -367,7 +433,7 @@ endwith_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the depth information
 depth_label = tk.Label(root, text="Depth:", font=("Helvetica", 10))
-depth_label.grid(row=5, column=1, sticky="w", padx=60)  # Set row to 4 (or any appropriate row index)
+depth_label.grid(row=5, column=1, sticky="w", padx=40)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the depth information
 depth_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
@@ -387,7 +453,7 @@ offset_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the distance information
 distance_label = tk.Label(root, text="Distance:", font=("Helvetica", 10))
-distance_label.grid(row=5, column=1, sticky="e", padx=58)  # Set row to 4 (or any appropriate row index)
+distance_label.grid(row=5, column=1, sticky="e", padx=40)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the distance information
 distance_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
@@ -397,7 +463,7 @@ distance_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the within information
 within_label = tk.Label(root, text="Within:", font=("Helvetica", 10))
-within_label.grid(row=5, column=1, sticky="se", padx=65, pady=30)  # Set row to 4 (or any appropriate row index)
+within_label.grid(row=5, column=1, sticky="se", padx=45, pady=30)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the within information
 within_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
@@ -442,6 +508,8 @@ input_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=input_tex
 input_text_scrollbar.grid(row=9, column=3, sticky='ns')
 input_text.config(yscrollcommand=input_text_scrollbar.set)
 
+input_text.bind('<KeyRelease>', check_content)
+
 # Configure row and column weights to make them resizable
 root.grid_rowconfigure(3, weight=1)
 root.grid_rowconfigure(5, weight=1)
@@ -451,8 +519,9 @@ root.grid_columnconfigure(1, weight=1)
 root.grid_columnconfigure(2, weight=1)
 
 # Bind functions to events
-search_entry.bind('<KeyRelease>', lambda event: update_combobox_options(search_entry.get()))
+search_button = ttk.Button(root, text="Search", command=lambda: update_combobox_options(search_entry.get()), width=10)
 rule_combobox.bind('<<ComboboxSelected>>', select_rule)
+
 
 # Start the GUI event loop
 root.mainloop()
