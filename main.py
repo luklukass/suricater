@@ -6,6 +6,8 @@ import ctypes
 
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
+content_list = []
+
 class PatternMatcher:
     def __init__(self, pattern):
         self.pattern = pattern
@@ -13,12 +15,11 @@ class PatternMatcher:
     def match(self, text):
         return re.search(self.pattern, text)
 
+
 class SuricataRuleParser:
     def __init__(self):
         self.content_pattern = r'content:\s*"([^"]+)"'
         self.nocase_pattern = r'\bnocase\b'
-        self.startwith_pattern = r'\bstartwith\b'
-        self.endwith_pattern = r'\bendwith\b'
         self.depth_pattern = r'\bdepth:\s*(\d+)\b'
         self.offset_pattern = r'\boffset:\s*(\d+)\b'
         self.distance_pattern = r'\bdistance:\s*(-?\d+)\b'
@@ -26,11 +27,8 @@ class SuricataRuleParser:
         self.isdataat_pattern = r'\bisdataat:\s*(!?)(\d+)(?:,(\w+))?(\b|;|\s)'
         self.pcre_pattern = r'pcre:\s*"([^"]+)"'
 
-
         self.keyword_content = re.compile(self.content_pattern)
         self.keyword_nocase = re.compile(self.nocase_pattern)
-        self.keyword_startwith = re.compile(self.startwith_pattern)
-        self.keyword_endwith = re.compile(self.endwith_pattern)
         self.keyword_depth = re.compile(self.depth_pattern)
         self.keyword_offset = re.compile(self.offset_pattern)
         self.keyword_distance = re.compile(self.distance_pattern)
@@ -42,14 +40,11 @@ class SuricataRuleParser:
         matches = self.keyword_content.findall(rule_text)
         return matches
 
-    def has_nocase(self, rule_text):
-        return bool(self.keyword_nocase.search(rule_text))
-
-    def has_startwith(self, rule_text):
-        return bool(self.keyword_startwith.search(rule_text))
-
-    def has_endwith(self, rule_text):
-        return bool(self.keyword_endwith.search(rule_text))
+    def has_nocase(self, rule_text, nocase=True):
+        if nocase:
+            return bool(self.keyword_nocase.search(rule_text))
+        else:
+            return not bool(self.keyword_nocase.search(rule_text))
 
     def get_all_depth(self, rule_text):
         depth_matches = self.keyword_depth.finditer(rule_text)
@@ -76,6 +71,7 @@ class SuricataRuleParser:
         pcre = self.keyword_pcre.findall(rule_text)
         return pcre
 
+
 def hex_to_ascii(match):
     hex_string = match.group(1).replace("|", "")
     hex_values = hex_string.split()  # Split by spaces
@@ -92,11 +88,12 @@ def hex_to_ascii(match):
     return ascii_string
 
 def convert_hex_to_ascii_content():
+    global content_list  # Assuming content_list is defined globally
     # Get the current content text
     content_text = content_box.get("1.0", tk.END)
 
     # Use a regular expression to find hex values and convert them
-    converted_text = re.sub(r'\|([0-9A-Fa-f ]+)\|', hex_to_ascii, content_text)
+    converted_text = re.sub(r'\|([0-9A-Fa-f ]+)*\|', hex_to_ascii, content_text)
 
     # Update the content box with the converted text
     content_box.config(state=tk.NORMAL)
@@ -104,6 +101,7 @@ def convert_hex_to_ascii_content():
     content_box.insert(tk.END, converted_text)
     content_box.tag_add("center", "1.0", "end")
     content_box.config(state=tk.DISABLED)
+
 
 # Function to handle rule selection and display it
 def select_rule(event):
@@ -118,12 +116,9 @@ def select_rule(event):
         rule_text.tag_add("center", "1.0", "end")
         rule_text.config(state=tk.DISABLED)
 
-
         # Extract all payload keywords
         payload_keywords = suricata_parser.extract_content(selected_rule)
-        nocase_info = "True" if suricata_parser.has_nocase(selected_rule) else "False"
-        startwith_info = "True" if suricata_parser.has_startwith(selected_rule) else "False"
-        endwith_info = "True" if suricata_parser.has_endwith(selected_rule) else "False"
+        nocase_info = "True" if suricata_parser.has_nocase(selected_rule, nocase=True) else "False"
         depth_values = suricata_parser.get_all_depth(selected_rule)
         offset_values = suricata_parser.get_all_offset(selected_rule)
         distance_values = suricata_parser.get_all_distance(selected_rule)
@@ -131,16 +126,17 @@ def select_rule(event):
         isdataat_values = suricata_parser.get_all_isdataat(selected_rule)
         pcre_values = suricata_parser.extract_pcre(selected_rule)
 
-
         content_text = ""
         if payload_keywords:
             for keyword in payload_keywords:
                 content_text += f"{keyword}\n"
 
+        content_list = content_text.splitlines()
+
         pcre_text = ""
         if pcre_values:
             for pcre in pcre_values:
-                pcre_text += f"{pcre}\n"
+                pcre_text += f"{pcre}"
 
         content_box.config(state=tk.NORMAL)
         content_box.delete("1.0", tk.END)
@@ -154,18 +150,6 @@ def select_rule(event):
         nocase_box.insert(tk.END, nocase_info)
         nocase_box.tag_add("center", "1.0", "end")
         nocase_box.config(state=tk.DISABLED)
-
-        startwith_box.config(state=tk.NORMAL)
-        startwith_box.delete("1.0", tk.END)
-        startwith_box.insert(tk.END, startwith_info)
-        startwith_box.tag_add("center", "1.0", "end")
-        startwith_box.config(state=tk.DISABLED)
-
-        endwith_box.config(state=tk.NORMAL)
-        endwith_box.delete("1.0", tk.END)
-        endwith_box.insert(tk.END, endwith_info)
-        endwith_box.tag_add("center", "1.0", "end")
-        endwith_box.config(state=tk.DISABLED)
 
         depth_box.config(state=tk.NORMAL)
         depth_box.delete("1.0", tk.END)
@@ -203,6 +187,7 @@ def select_rule(event):
         pcre_box.tag_add("center", "1.0", "end")
         pcre_box.config(state=tk.DISABLED)
 
+        check_content()
 def filter_rules(search_text):
     matching_msgs = []
     matching_rules = []
@@ -219,6 +204,7 @@ def update_combobox_options(search_text):
     rule_combobox['values'] = matching_msgs
     global filtered_rules
     filtered_rules = matching_rules
+
 
 def choose_file_action():
     global filtered_rules
@@ -237,8 +223,90 @@ def choose_file_action():
             filtered_rules = rules.copy()
             rule_combobox['values'] = msg_values
 
+
 def open_documentation():
     webbrowser.open('suricata-latest\index.html')
+
+def check_content(event=None):
+    input_text.tag_remove("match", "1.0", tk.END)
+
+    # Get the content from the input field
+    input_text_content = input_text.get("1.0", tk.END).strip()
+
+    # Get the selected rule text
+    selected_rule = rule_text.get("1.0", tk.END)
+
+    # Split the rule by semicolon
+    rule_parts = re.split(r'\s*;\s*', selected_rule)
+
+    # Initialize a list to store the output
+    output_list = []
+
+    # Initialize variables to store current content and properties
+    current_content = None
+    current_properties = []
+
+    # Iterate through each part of the rule
+    for part in rule_parts:
+        # Check if the part contains "content"
+        if "content:" in part and "content:!" not in part:
+            # If there are accumulated properties, add them to the output list
+            if current_content is not None:
+                output_list.append([current_content] + current_properties)
+            # Extract content value for the new content
+            current_content = re.search(r'content:\s*"([^"]+)"' or r'content:!\s*"([^"]+)"', part).group(1)
+            # Reset the properties list for the new content
+            current_properties = []
+        else:
+            # Accumulate other properties for the current content
+            current_properties.append(part)
+            # Check if the current part contains "reference"
+            if "reference" in part:
+                # If "reference" is found, it's the last part for the current content
+                # Add the current content and its properties to the output list
+                output_list.append([current_content] + current_properties)
+                # Break out of the loop after the first "reference"
+                break
+
+    # Removing element from list of lists
+    cleaned_data = []
+    for sublist in output_list:
+        # Remove elements containing 'reference:'
+        sublist = [element for element in sublist if 'reference:' not in element]
+
+        # Find the index of the first occurrence of 'content:!'
+        content_index = next((i for i, element in enumerate(sublist) if 'content:!' in element), None)
+
+        # Append elements before 'content:!' to cleaned_data
+        if content_index is not None:
+            cleaned_data.append(sublist[:content_index])
+        else:
+            cleaned_data.append(sublist)
+
+    print(cleaned_data)
+
+    # Initialize flags to track if any content pattern matches
+    #ascii_matched = False
+
+    # Iterate through each ASCII content pattern and check if the content matches
+    #for content_pattern in content_pattern_matches:
+        # Create a PatternMatcher object with the current content pattern
+        #pattern_matcher = PatternMatcher(content_pattern)
+
+        # Check if the ASCII content matches the current pattern with case sensitivity
+        #match = pattern_matcher.match(input_text_content)
+        #if match:
+            #start_index, end_index = match.span()
+            # Highlight the matching content in the input text field
+            #input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
+            #input_text.tag_config("match", background="yellow")
+            # Set the flag to True if any ASCII content pattern matches
+            #ascii_matched = True
+
+    # Display a message if no content pattern matches
+    #if not (ascii_matched):
+# return
+
 
 def export_rules():
     search_text = search_entry.get().lower()
@@ -260,71 +328,16 @@ def export_rules():
             messagebox.showinfo("Export Successful", f"The rules have been exported to {file_path}")
         except Exception as e:
             messagebox.showerror("Export Error", f"An error occurred during export: {str(e)}")
+
 def convert_ascii_button_action():
     select_rule(None)
-
+    check_content()
 def perform_search():
     update_combobox_options(search_entry.get())
 
 def discover(selected_rule):
     nocase_info = "True" if suricata_parser.has_nocase(selected_rule) else "False"
     return nocase_info
-
-# Function to check content against the extracted pattern and highlight matching content
-def check_content(event=None):
-    input_text.tag_remove("match", "1.0", tk.END)
-
-    # Get the content from the input field
-    input_text_content = input_text.get("1.0", tk.END).strip()
-
-    # Get the selected rule text
-    selected_rule = rule_text.get("1.0", tk.END)
-
-    # Extract all content patterns from the rule (both ASCII and hex)
-    content_pattern_matches = re.findall(r'content:\s*"([^"]+)"', selected_rule)
-    hex_content_pattern_matches = re.findall(r'\|([0-9A-Fa-f]+(?: [0-9A-Fa-f]+)*)\|', selected_rule)
-
-    # Initialize a flag to track if any content pattern matches
-    content_matched = False
-
-    # Iterate through each ASCII content pattern and check if the content matches
-    for content_pattern in content_pattern_matches:
-        # Create a PatternMatcher object with the current content pattern
-        pattern_matcher = PatternMatcher(content_pattern)
-
-        # Check if the ASCII content matches the current pattern with case sensitivity
-        match = pattern_matcher.match(input_text_content)
-        if match:
-            start_index, end_index = match.span()
-            # Highlight the matching content in the input text field
-            input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
-            input_text.tag_config("match", background="yellow")
-            # Set the flag to True if any ASCII content pattern matches
-            content_matched = True
-            break  # Exit the loop if a match is found
-
-    if not content_matched:
-        # Try matching again with case insensitivity if nocase is true
-        nocase = suricata_parser.has_nocase(selected_rule)
-        if nocase:
-            for content_pattern in content_pattern_matches:
-                pattern_matcher = PatternMatcher(content_pattern)
-
-                # Check if the ASCII content matches the current pattern without case sensitivity
-                match = pattern_matcher.match(input_text_content.lower())
-                if match:
-                    start_index, end_index = match.span()
-                    # Highlight the matching content in the input text field
-                    input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
-                    input_text.tag_config("match", background="yellow")
-                    # Set the flag to True if any ASCII content pattern matches
-                    content_matched = True
-                    break  # Exit the loop if a match is found
-
-    # Display a message if no content pattern matches
-    if not content_matched:
-        return
-
 
 root = tk.Tk()
 root.title("SURICATER")
@@ -363,7 +376,6 @@ filtered_rules = rules.copy()
 search_label = tk.Label(root, text="Search:", font=("Helvetica", 10))
 search_label.grid(row=0, column=0, padx=10, sticky="w")
 
-
 # Create a Combobox to select the "msg" option
 rules_label = tk.Label(root, text="Rules:", font=("Helvetica", 10))
 rules_label.grid(row=0, column=3, padx=10, sticky="w")
@@ -394,27 +406,13 @@ rule_text.grid(row=3, column=0, columnspan=9, padx=10, pady=(0, 5))
 rule_text.tag_configure("center", justify='center')
 rule_text.config(state=tk.DISABLED)
 
-# Create a Label widget for the content title
-#content_label = tk.Label(root, text="Content:", font=("Helvetica", 10))
-#content_label.grid(row=4, column=0, padx=10, sticky="w")
-
-# Create a Text widget for the content_box
-#content_box = tk.Text(root, wrap=tk.WORD, width=180, height=18, font=("Helvetica", 11))
-#content_box.grid(row=5, column=0, padx=10, pady=(0, 10), sticky="w")
-#content_box.config(state=tk.DISABLED)
-
 # Scrollbar for rule_text
 rule_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=rule_text.yview)
 rule_text_scrollbar.grid(row=3, column=9, sticky='ns')
 rule_text.config(yscrollcommand=rule_text_scrollbar.set)
 
-# Scrollbar for content_box
-#content_box_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=content_box.yview)
-#content_box_scrollbar.grid(row=5, column=0, sticky='e ns')
-#content_box.config(yscrollcommand=content_box_scrollbar.set)
-
 # button from hex
-convert_content_button = ttk.Button(root, text="Hex to ASCII", command=convert_hex_to_ascii_content, width=17)
+convert_content_button = ttk.Button(root, text="To ASCII", command=convert_hex_to_ascii_content, width=17)
 convert_content_button.grid(row=6, column=1, pady=5)  # Adjust padx as needed
 
 # button to hex
@@ -427,78 +425,57 @@ nocase_label.grid(row=4, column=1)
 
 # Create a Text widget for the nocase information
 nocase_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-nocase_box.grid(row=4, column=1 ,pady=(60, 0))
+nocase_box.grid(row=4, column=1, pady=(60, 0))
 nocase_box.tag_configure("center", justify='center')
 nocase_box.config(state=tk.DISABLED)
 
-# Create a Label widget for the nocase information
-# Create a Label widget for the startwith information
-startwith_label = tk.Label(root, text="Startwith:", font=("Helvetica", 10))
-startwith_label.grid(row=4, column=2)
-
-# Create a Text widget for the startwith information
-startwith_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-startwith_box.grid(row=4, column=2, pady=(60, 0))
-startwith_box.tag_configure("center", justify='center')
-startwith_box.config(state=tk.DISABLED)
-
-# Create a Label widget for the endwith information
-endwith_label = tk.Label(root, text="Endwith:", font=("Helvetica", 10))
-endwith_label.grid(row=4,  column=3)
-
-# Create a Text widget for the endwith information
-endwith_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-endwith_box.grid(row=4,  column=3, pady=(60, 0))
-endwith_box.tag_configure("center", justify='center')
-endwith_box.config(state=tk.DISABLED)
-
 # Create a Label widget for the depth information
 depth_label = tk.Label(root, text="Depth:", font=("Helvetica", 10))
-depth_label.grid(row=4, column=4)  # Set row to 4 (or any appropriate row index)
+depth_label.grid(row=4, column=2)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the depth information
 depth_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-depth_box.grid(row=4, column=4,  pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
+depth_box.grid(row=4, column=2, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
 depth_box.tag_configure("center", justify='center')
 depth_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the offset information
 offset_label = tk.Label(root, text="Offset:", font=("Helvetica", 10))
-offset_label.grid(row=4, column=5)  # Set row to 4 (or any appropriate row index)
+offset_label.grid(row=4, column=3)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the offset information
 offset_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-offset_box.grid(row=4, column=5, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
+offset_box.grid(row=4, column=3, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
 offset_box.tag_configure("center", justify='center')
 offset_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the distance information
 distance_label = tk.Label(root, text="Distance:", font=("Helvetica", 10))
-distance_label.grid(row=4,  column=6)  # Set row to 4 (or any appropriate row index)
+distance_label.grid(row=4, column=4)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the distance information
 distance_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-distance_box.grid(row=4,  column=6, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
+distance_box.grid(row=4, column=4, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
 distance_box.tag_configure("center", justify='center')
 distance_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the within information
 within_label = tk.Label(root, text="Within:", font=("Helvetica", 10))
-within_label.grid(row=4,  column=7)  # Set row to 4 (or any appropriate row index)
+within_label.grid(row=4, column=5)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the within information
 within_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-within_box.grid(row=4,  column=7, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
+within_box.grid(row=4, column=5, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
 within_box.tag_configure("center", justify='center')
 within_box.config(state=tk.DISABLED)
 
 # Create a Label widget for the isdataat information
 isdataat_label = tk.Label(root, text="Isdataat:", font=("Helvetica", 10))
-isdataat_label.grid(row=4,  column=8)  # Set row to 4 (or any appropriate row index)
+isdataat_label.grid(row=4, column=6)  # Set row to 4 (or any appropriate row index)
 
 # Create a Text widget for the isdataat information
 isdataat_box = tk.Text(root, wrap=tk.WORD, width=15, height=1, font=("Helvetica", 11))
-isdataat_box.grid(row=4, column=8, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
+isdataat_box.grid(row=4, column=6, pady=(60, 0))  # Set columnspan to 2 to make the box span two columns
 isdataat_box.tag_configure("center", justify='center')
 isdataat_box.config(state=tk.DISABLED)
 
@@ -543,8 +520,6 @@ input_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=input_tex
 input_text_scrollbar.grid(row=11, column=9, sticky='ns')
 input_text.config(yscrollcommand=input_text_scrollbar.set)
 
-input_text.bind('<KeyRelease>', check_content)
-
 # Configure row and column weights to make them resizable
 root.grid_rowconfigure(3, weight=1)
 root.grid_rowconfigure(4, weight=1)
@@ -561,7 +536,6 @@ root.grid_columnconfigure(8, weight=1)
 # Bind functions to events
 
 rule_combobox.bind('<<ComboboxSelected>>', select_rule)
-
 
 # Start the GUI event loop
 root.mainloop()
