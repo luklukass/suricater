@@ -250,13 +250,17 @@ def check_content(event=None):
     for part in rule_parts:
         # Check if the part contains "content"
         if "content:" in part and "content:!" not in part:
-            # If there are accumulated properties, add them to the output list
+            # If there are accumulated properties and content is not None, add them to the output list
             if current_content is not None:
                 output_list.append([current_content] + current_properties)
             # Extract content value for the new content
-            current_content = re.search(r'content:\s*"([^"]+)"' or r'content:!\s*"([^"]+)"', part).group(1)
-            # Reset the properties list for the new content
-            current_properties = []
+            match = re.search(r'content:\s*"([^"]+)"', part)
+            if match:
+                current_content = match.group(1)
+                # Convert ASCII content in hexadecimal format to ASCII
+                current_content = re.sub(r'\|\|([0-9A-Fa-f ]+)\|\|', hex_to_ascii, current_content)
+                # Reset the properties list for the new content
+                current_properties = []
         else:
             # Accumulate other properties for the current content
             current_properties.append(part)
@@ -271,20 +275,31 @@ def check_content(event=None):
     # Removing element from list of lists
     cleaned_data = []
     for sublist in output_list:
-        # Remove elements containing 'reference:'
-        sublist = [element for element in sublist if 'reference:' not in element]
+        try:
+            # Remove elements containing 'reference:'
+            sublist = [element for element in sublist if 'reference:' not in element]
 
-        # Find the index of the first occurrence of 'content:!'
-        content_index = next((i for i, element in enumerate(sublist) if 'content:!' in element), None)
+            # Find the index of the first occurrence of 'content:!'
+            content_index = next((i for i, element in enumerate(sublist) if 'content:!' in element), None)
 
-        # Append elements before 'content:!' to cleaned_data
-        if content_index is not None:
-            cleaned_data.append(sublist[:content_index])
-        else:
-            cleaned_data.append(sublist)
+            # Append elements before 'content:!' to cleaned_data if content_index is found
+            if content_index is not None:
+                cleaned_data.append(sublist[:content_index])
+            else:
+                cleaned_data.append(sublist)
+        except TypeError:
+            # Handle the TypeError (NoneType is not iterable) gracefully
+            pass
 
+    # Check if cleaned_data is empty and return None in that case
+    if not cleaned_data:
+        cleaned_data = None
+    for sublist in cleaned_data:
+        # Check if the first element of the sublist contains hex values
+        if '|' in sublist[0]:
+            # Convert hex values to ASCII
+            sublist[0] = hex_to_ascii(re.search(r'\|([0-9A-Fa-f ]+)\|', sublist[0]))
     print(cleaned_data)
-
     # Initialize flags to track if any content pattern matches
     #ascii_matched = False
 
