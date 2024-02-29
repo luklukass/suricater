@@ -257,8 +257,6 @@ def check_content(event=None):
             match = re.search(r'content:\s*"([^"]+)"', part)
             if match:
                 current_content = match.group(1)
-                # Convert ASCII content in hexadecimal format to ASCII
-                current_content = re.sub(r'\|\|([0-9A-Fa-f ]+)\|\|', hex_to_ascii, current_content)
                 # Reset the properties list for the new content
                 current_properties = []
         else:
