@@ -292,13 +292,19 @@ def check_content(event=None):
             pass
 
     # Check if cleaned_data is empty and return None in that case
+
     if not cleaned_data:
         cleaned_data = None
-    for sublist in cleaned_data:
-        # Check if the first element of the sublist contains hex values
-        if '|' in sublist[0]:
-            # Convert hex values to ASCII
-            sublist[0] = hex_to_ascii(re.search(r'\|([0-9A-Fa-f ]+)\|', sublist[0]))
+
+    try:
+        for sublist in cleaned_data:
+            # Check if the first element of the sublist contains hex values
+            if '|' in sublist[0]:
+                # Use a regular expression to find hex values and convert them
+                sublist[0] = re.sub(r'\|([0-9A-Fa-f ]+)\|', hex_to_ascii, sublist[0])
+    except TypeError:
+        pass
+
     print(cleaned_data)
     # Initialize flags to track if any content pattern matches
     #ascii_matched = False
