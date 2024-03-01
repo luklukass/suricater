@@ -255,12 +255,10 @@ def check_content(event=None):
                 output_list.append([current_content] + current_properties)
             # Extract content value for the new content
             match = re.search(r'content:\s*"([^"]+)"', part)
-
             if match:
                 current_content = match.group(1)
                 # Reset the properties list for the new content
                 current_properties = []
-
         else:
             # Accumulate other properties for the current content
             current_properties.append(part)
@@ -271,17 +269,22 @@ def check_content(event=None):
                 output_list.append([current_content] + current_properties)
                 # Break out of the loop after the first "reference"
                 break
-    if "reference" not in rule_parts:
-        output_list.append([current_content] + current_properties)
 
     # Removing element from list of lists
     cleaned_data = []
     for sublist in output_list:
         try:
             # Remove elements containing 'reference:'
-            sublist = [element for element in sublist if 'reference:' not in element and 'content:!' not in element]
+            sublist = [element for element in sublist if 'reference:' not in element]
 
-            cleaned_data.append(sublist)
+            # Find the index of the first occurrence of 'content:!'
+            content_index = next((i for i, element in enumerate(sublist) if 'content:!' in element), None)
+
+            # Append elements before 'content:!' to cleaned_data if content_index is found
+            if content_index is not None:
+                cleaned_data.append(sublist[:content_index])
+            else:
+                cleaned_data.append(sublist)
         except TypeError:
             # Handle the TypeError (NoneType is not iterable) gracefully
             pass
@@ -310,6 +313,7 @@ def check_content(event=None):
             within = None
             depth = None
             nocase = False
+            pcre = None
 
             for item in sublist[1:]:
                 if 'distance' in item:
@@ -322,15 +326,17 @@ def check_content(event=None):
                     depth = int(item.split(':')[-1])
                 elif 'nocase' in item:
                     nocase = True
+                elif item.startswith('pcre:'):
+                    match = re.match(r'pcre:\s*"([^"]+)"', item)
+                    if match:
+                        pcre = match.group(1)
 
-            result_sublist.extend([distance, offset, within, depth, nocase])
+            result_sublist.extend([distance, offset, within, depth, nocase, pcre])
             results.append(result_sublist)
     except TypeError:
         pass
-
-    #[[content, distance, offset, within, depth, nocase]]
-
     print(results)
+
     # Initialize flags to track if any content pattern matches
     #ascii_matched = False
 
