@@ -223,12 +223,11 @@ def choose_file_action():
             filtered_rules = rules.copy()
             rule_combobox['values'] = msg_values
 
-
 def open_documentation():
     webbrowser.open('suricata-latest\index.html')
 
 def check_content(event=None):
-    input_text.tag_remove("match", "1.0", tk.END)
+    input_text.tag_remove("highlight", "1.0", tk.END)
 
     # Get the content from the input field
     input_text_content = input_text.get("1.0", tk.END).strip()
@@ -290,7 +289,6 @@ def check_content(event=None):
             pass
 
     # Check if cleaned_data is empty and return None in that case
-
     if not cleaned_data:
         cleaned_data = None
 
@@ -313,7 +311,6 @@ def check_content(event=None):
             within = None
             depth = None
             nocase = False
-            pcre = None
 
             for item in sublist[1:]:
                 if 'distance' in item:
@@ -326,40 +323,41 @@ def check_content(event=None):
                     depth = int(item.split(':')[-1])
                 elif 'nocase' in item:
                     nocase = True
-                elif item.startswith('pcre:'):
-                    match = re.match(r'pcre:\s*"([^"]+)"', item)
-                    if match:
-                        pcre = match.group(1)
 
-            result_sublist.extend([distance, offset, within, depth, nocase, pcre])
+            result_sublist.extend([distance, offset, within, depth, nocase])
             results.append(result_sublist)
     except TypeError:
         pass
-    print(results)
 
-    # Initialize flags to track if any content pattern matches
-    #ascii_matched = False
+    for sublist in results:
+        content = sublist[0]  # Extract content from the sublist
+        distance, offset, within, depth, nocase = sublist[1:6]  # Extract other options
 
-    # Iterate through each ASCII content pattern and check if the content matches
-    #for content_pattern in content_pattern_matches:
-        # Create a PatternMatcher object with the current content pattern
-        #pattern_matcher = PatternMatcher(content_pattern)
+        if offset is None:
+            offset = 0
+        if depth is not None:
+            text = input_text_content.find(content, offset, depth)
+        else:
+            text = input_text_content.find(content, offset)
+        if text != -1:  # Check if the content is found in the input_text_content
+            start_index = 0
+            while True:
+                start_index = int(start_index)  # Convert start_index to integer
+                start_index = input_text_content.find(content, start_index)
+                if start_index == -1:
+                    break
+                end_index = f"{start_index}+{len(content)}c"
+                input_text.tag_add("highlight", f"{start_index + 1}c", f"{end_index+1}c")
+                start_index = f"{end_index}+1c"
 
-        # Check if the ASCII content matches the current pattern with case sensitivity
-        #match = pattern_matcher.match(input_text_content)
-        #if match:
-            #start_index, end_index = match.span()
-            # Highlight the matching content in the input text field
-            #input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
-            #input_text.tag_config("match", background="yellow")
-            # Set the flag to True if any ASCII content pattern matches
-            #ascii_matched = True
-
-    # Display a message if no content pattern matches
-    #if not (ascii_matched):
-# return
+                # Configure the tag to highlight text with a yellow background
+                input_text.tag_configure("highlight", background="yellow")
+        else:
+            pass
 
 
+#
+#create regex from results
 def export_rules():
     search_text = search_entry.get().lower()
     matching_rules = [rule for rule in rules if search_text in rule.lower()]
@@ -588,6 +586,6 @@ root.grid_columnconfigure(8, weight=1)
 # Bind functions to events
 
 rule_combobox.bind('<<ComboboxSelected>>', select_rule)
-
+input_text.bind('<KeyRelease>', check_content)
 # Start the GUI event loop
 root.mainloop()
