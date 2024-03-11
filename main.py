@@ -505,7 +505,7 @@ rule_label = tk.Label(root, text="Selected rule:", font=("Helvetica", 10))
 rule_label.grid(row=2, column=0, columnspan=9, padx=10, sticky="sw")
 
 # Create a Text widget to display the selected rule
-rule_text = tk.Text(root, wrap=tk.WORD, width=400, height=9, font=("Helvetica", 12))
+rule_text = tk.Text(root, wrap=tk.WORD, width=400, height=7, font=("Helvetica", 12))
 rule_text.grid(row=3, column=0, columnspan=9, padx=10, pady=(0, 5))
 rule_text.tag_configure("center", justify='center')
 rule_text.config(state=tk.DISABLED)
@@ -528,7 +528,7 @@ content_label = tk.Label(root, text="Content:", font=("Helvetica", 10))
 content_label.grid(row=4, column=0, columnspan=9, padx=10, pady=(0, 5), sticky="sw")
 
 # Create a Text widget for the content_box
-content_box = tk.Text(root, wrap=tk.WORD, width=400, height=5, font=("Helvetica", 11))
+content_box = tk.Text(root, wrap=tk.WORD, width=400, height=7, font=("Helvetica", 11))
 content_box.grid(row=5, column=0, columnspan=9, padx=10, pady=(0, 5), sticky="w")
 content_box.config(state=tk.DISABLED)
 
