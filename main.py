@@ -234,6 +234,7 @@ def check_content(event=None):
     for hex_content_match in hex_content_pattern_matches:
         ascii_pattern = hex_to_ascii(hex_content_match)
         matches = re.finditer(re.escape(ascii_pattern), input_text_content)
+
         for match in matches:
             start_index, end_index = match.span()
             input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
