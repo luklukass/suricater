@@ -202,6 +202,7 @@ def open_documentation():
     webbrowser.open('suricata-latest\index.html')
 
 
+
 def check_content(event=None):
     input_text.tag_remove("match", "1.0", tk.END)
 
@@ -211,34 +212,35 @@ def check_content(event=None):
     # Get the selected rule text
     selected_rule = rule_text.get("1.0", tk.END)
 
-    # Extract all content patterns from the rule (both ASCII and hex)
-    content_pattern_matches = re.findall(r'content:\s*"([^"]+)"', selected_rule)
-    hex_content_pattern_matches = re.findall(r'\|([0-9A-Fa-f]+(?: [0-9A-Fa-f]+)*)\|', selected_rule)
-
     # Initialize a flag to track if any content pattern matches
     content_matched = False
 
-    # Iterate through each ASCII content pattern and check if the content matches
-    for content_pattern in content_pattern_matches:
-        # Create a PatternMatcher object with the current content pattern
-        pattern_matcher = PatternMatcher(content_pattern)
+    # Extract ASCII content patterns from the rule
+    ascii_content_pattern_matches = re.findall(r'content:\s*"([^"]+)"', selected_rule)
 
-        # Check if the ASCII content matches the current pattern with case sensitivity
-        match = pattern_matcher.match(input_text_content)
-        if match:
+    # Highlight ASCII content patterns
+    for pattern in ascii_content_pattern_matches:
+        matches = re.finditer(re.escape(pattern), input_text_content)
+        for match in matches:
             start_index, end_index = match.span()
-            # Highlight the matching content in the input text field
             input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
             input_text.tag_config("match", background="yellow")
-            # Set the flag to True if any ASCII content pattern matches
             content_matched = True
-            break  # Exit the loop if a match is found
 
-    # Display a message if no content pattern matches
-    if not content_matched:
-        return
+    # Extract hex content patterns from the rule
+    hex_content_pattern_matches = re.finditer(r'\|([0-9A-Fa-f ]+)\|', selected_rule)
 
-#
+    # Highlight hex content patterns
+    for hex_content_match in hex_content_pattern_matches:
+        ascii_pattern = hex_to_ascii(hex_content_match)
+        matches = re.finditer(re.escape(ascii_pattern), input_text_content)
+        for match in matches:
+            start_index, end_index = match.span()
+            input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
+            input_text.tag_config("match", background="yellow")
+            content_matched = True
+
+    return content_matched
 def get_content(event=None):
     input_text.tag_remove("highlight", "1.0", tk.END)
 
