@@ -8,14 +8,12 @@ ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
 content_list = []
 
-
 class PatternMatcher:
     def __init__(self, pattern):
         self.pattern = pattern
 
     def match(self, text):
         return re.search(self.pattern, text)
-
 
 class SuricataRuleParser:
     def __init__(self):
@@ -26,7 +24,6 @@ class SuricataRuleParser:
     def extract_pcre(self, rule_text):
         pcre = self.keyword_pcre.findall(rule_text)
         return pcre
-
 
 def hex_to_ascii(match):
     hex_string = match.group(1).replace("|", "")
@@ -42,7 +39,6 @@ def hex_to_ascii(match):
         except ValueError:
             ascii_string += match.group(0)  # Return the original string if conversion fails
     return ascii_string
-
 
 def get_content_in_ascii():
     input_text.tag_remove("highlight", "1.0", tk.END)
@@ -122,7 +118,6 @@ def get_content_in_ascii():
     except TypeError:
         pass
 
-
 # Function to handle rule selection and display it
 def select_rule(event):
     selected_rule_index = rule_combobox.current()
@@ -172,13 +167,11 @@ def filter_rules(search_text):
                 matching_msgs.append(match.group(1))
     return matching_msgs, matching_rules
 
-
 def update_combobox_options(search_text):
     matching_msgs, matching_rules = filter_rules(search_text)
     rule_combobox['values'] = matching_msgs
     global filtered_rules
     filtered_rules = matching_rules
-
 
 def choose_file_action():
     global filtered_rules
@@ -197,11 +190,8 @@ def choose_file_action():
             filtered_rules = rules.copy()
             rule_combobox['values'] = msg_values
 
-
 def open_documentation():
     webbrowser.open('suricata-latest\index.html')
-
-
 
 def check_content(event=None):
     input_text.tag_remove("match", "1.0", tk.END)
@@ -253,7 +243,13 @@ def get_content(event=None):
     current_content = None
     current_properties = {}
 
+    nocase_present = False  # Flag to track if 'nocase' is present
+
     for part in rule_parts:
+        if "nocase" in part:  # Check if 'nocase' is present in the current part
+            nocase_present = True  # Set flag to True if 'nocase' is found
+            current_properties['nocase'] = True  # Add 'nocase' to current properties with value True
+            continue  # Skip processing 'nocase' part, as it's not part of content definition
         if "content:" in part and "content:!" not in part:
             if current_content is not None:
                 output_list.append({current_content: current_properties})
@@ -261,6 +257,7 @@ def get_content(event=None):
             if match:
                 current_content = match.group(1)
                 current_properties = {}
+
         else:
             if ":" in part:  # Check if the part contains a colon
                 key, value = part.split(':', 1)  # Limit the split operation to one split
@@ -340,11 +337,9 @@ def export_rules():
         except Exception as e:
             messagebox.showerror("Export Error", f"An error occurred during export: {str(e)}")
 
-
 def convert_ascii_button_action():
     select_rule(None)
     check_content()
-
 
 def perform_search():
     update_combobox_options(search_entry.get())
