@@ -52,6 +52,10 @@ def get_content_in_ascii():
     current_properties = {}
 
     for part in rule_parts:
+        if "nocase" in part:
+            current_properties['nocase'] = True
+            continue
+
         if "content:" in part and "content:!" not in part:
             if current_content is not None:
                 output_list.append({current_content: current_properties})
@@ -62,7 +66,8 @@ def get_content_in_ascii():
         else:
             if ":" in part:  # Check if the part contains a colon
                 key, value = part.split(':', 1)  # Limit the split operation to one split
-                current_properties[key.strip()] = value.strip() if value.strip() != 'None' else None
+                current_properties[key.strip()] = value.strip() if value.strip() != 'None' else False
+
                 if "reference" in part:
                     output_list.append({current_content: current_properties})
                     break
@@ -81,7 +86,7 @@ def get_content_in_ascii():
                     f"offset: {properties.get('offset', 'None')}, "
                     f"within: {properties.get('within', 'None')}, "
                     f"depth: {properties.get('depth', 'None')}, "
-                    f"nocase: {properties.get('nocase', 'False')}"
+                    f"nocase: {properties.get('nocase', False)}"
                 )
 
                 converted_text = re.sub(r'\|([0-9A-Fa-f ]+)*\|', hex_to_ascii, result_str)
@@ -243,11 +248,9 @@ def get_content(event=None):
     current_content = None
     current_properties = {}
 
-    nocase_present = False  # Flag to track if 'nocase' is present
 
     for part in rule_parts:
         if "nocase" in part:  # Check if 'nocase' is present in the current part
-            nocase_present = True  # Set flag to True if 'nocase' is found
             current_properties['nocase'] = True  # Add 'nocase' to current properties with value True
             continue  # Skip processing 'nocase' part, as it's not part of content definition
         if "content:" in part and "content:!" not in part:
@@ -280,7 +283,7 @@ def get_content(event=None):
                     f"offset: {properties.get('offset', 'None')}, "
                     f"within: {properties.get('within', 'None')}, "
                     f"depth: {properties.get('depth', 'None')}, "
-                    f"nocase: {properties.get('nocase', 'False')}"
+                    f"nocase: {properties.get('nocase', False)}"
                 )
 
                 # Add colored text to the Text widget based on index
@@ -367,7 +370,6 @@ menu_bar.add_cascade(label="Help", menu=help_menu)
 
 # Add items to the File menu
 signatures_menu.add_command(label="Choose", command=choose_file_action)
-signatures_menu.add_command(label="Create")
 signatures_menu.add_command(label="Export", command=export_rules)
 help_menu.add_command(label="Documentation", command=open_documentation)
 help_menu.add_command(label="Info")
