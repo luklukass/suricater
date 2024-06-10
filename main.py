@@ -367,7 +367,6 @@ menu_bar.add_cascade(label="Help", menu=help_menu)
 
 # Add items to the File menu
 signatures_menu.add_command(label="Choose", command=choose_file_action)
-signatures_menu.add_command(label="Create")
 signatures_menu.add_command(label="Export", command=export_rules)
 help_menu.add_command(label="Documentation", command=open_documentation)
 help_menu.add_command(label="Info")
