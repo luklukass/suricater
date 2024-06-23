@@ -1,3 +1,4 @@
+import string
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import re
@@ -15,6 +16,9 @@ class PatternMatcher:
     def match(self, text):
         return re.search(self.pattern, text)
 
+    def match_all(self, text):
+        return re.finditer(self.pattern, text)
+
 class SuricataRuleParser:
     def __init__(self):
         self.pcre_pattern = r'pcre:\s*"([^"]+)"'
@@ -24,7 +28,16 @@ class SuricataRuleParser:
     def extract_pcre(self, rule_text):
         pcre = self.keyword_pcre.findall(rule_text)
         return pcre
+def highlight_pcre_matches(input_text, pcre_patterns):
+    input_text.tag_remove("match", "1.0", tk.END)
+    input_text_content = input_text.get("1.0", tk.END).strip()
 
+    for pattern in pcre_patterns:
+        matcher = PatternMatcher(pattern)
+        for match in matcher.match_all(input_text_content):
+            start_index, end_index = match.span()
+            input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
+            input_text.tag_config("match", background="green")
 def hex_to_ascii(match):
     hex_string = match.group(1).replace("|", "")
     hex_values = hex_string.split()  # Split by spaces
@@ -118,8 +131,11 @@ def get_content_in_ascii():
                 results.append(converted_text)
 
             # Insert a newline after each sublist
-            content_box.insert(tk.END, "\n", "black")
+                content_box.insert(tk.END, "\n", "black")
+        pcre_values = suricata_parser.extract_pcre(selected_rule)
 
+        highlight_pcre_matches(input_text, pcre_values)
+        check_content()
     except TypeError:
         pass
 
@@ -196,7 +212,7 @@ def choose_file_action():
             rule_combobox['values'] = msg_values
 
 def open_documentation():
-    webbrowser.open('suricata-latest\index.html')
+    webbrowser.open('suricata-latest\\index.html')
 
 def check_content(event=None):
     input_text.tag_remove("match", "1.0", tk.END)
@@ -210,31 +226,25 @@ def check_content(event=None):
     # Initialize a flag to track if any content pattern matches
     content_matched = False
 
+    hex_regex = r'\|([0-9A-Fa-f ]+)\|'
+
     # Extract ASCII content patterns from the rule
-    ascii_content_pattern_matches = re.findall(r'content:\s*"([^"]+)"', selected_rule)
+    content_pattern_matches = re.findall(r'content:\s*"([^"]+)"', selected_rule)
 
-    # Highlight ASCII content patterns
-    for pattern in ascii_content_pattern_matches:
-        matches = re.finditer(re.escape(pattern), input_text_content)
+    # Convert hex values to ASCII in content_pattern_matches
+    converted_content_patterns = []
+    for pattern in content_pattern_matches:
+        converted_pattern = re.sub(hex_regex, hex_to_ascii, pattern)
+        converted_content_patterns.append(converted_pattern)
+
+    for pattern in converted_content_patterns:
+        matches = re.finditer(re.escape(pattern), input_text_content, re.IGNORECASE)
         for match in matches:
             start_index, end_index = match.span()
             input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
             input_text.tag_config("match", background="yellow")
             content_matched = True
 
-    # Extract hex content patterns from the rule
-    hex_content_pattern_matches = re.finditer(r'\|([0-9A-Fa-f ]+)\|', selected_rule)
-
-    # Highlight hex content patterns
-    for hex_content_match in hex_content_pattern_matches:
-        ascii_pattern = hex_to_ascii(hex_content_match)
-        matches = re.finditer(re.escape(ascii_pattern), input_text_content)
-
-        for match in matches:
-            start_index, end_index = match.span()
-            input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
-            input_text.tag_config("match", background="yellow")
-            content_matched = True
 
     return content_matched
 def get_content(event=None):
