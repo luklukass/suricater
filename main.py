@@ -1,6 +1,6 @@
 import string
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, font
 import re
 import webbrowser
 import ctypes
@@ -28,16 +28,7 @@ class SuricataRuleParser:
     def extract_pcre(self, rule_text):
         pcre = self.keyword_pcre.findall(rule_text)
         return pcre
-def highlight_pcre_matches(input_text, pcre_patterns):
-    input_text.tag_remove("match", "1.0", tk.END)
-    input_text_content = input_text.get("1.0", tk.END).strip()
 
-    for pattern in pcre_patterns:
-        matcher = PatternMatcher(pattern)
-        for match in matcher.match_all(input_text_content):
-            start_index, end_index = match.span()
-            input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
-            input_text.tag_config("match", background="green")
 def hex_to_ascii(match):
     hex_string = match.group(1).replace("|", "")
     hex_values = hex_string.split()  # Split by spaces
@@ -132,9 +123,7 @@ def get_content_in_ascii():
 
             # Insert a newline after each sublist
                 content_box.insert(tk.END, "\n", "black")
-        pcre_values = suricata_parser.extract_pcre(selected_rule)
 
-        highlight_pcre_matches(input_text, pcre_values)
         check_content()
     except TypeError:
         pass
@@ -225,7 +214,7 @@ def check_content(event=None):
 
     # Initialize a flag to track if any content pattern matches
     content_matched = False
-
+    pcre_matched = False
     hex_regex = r'\|([0-9A-Fa-f ]+)\|'
 
     # Extract ASCII content patterns from the rule
@@ -245,8 +234,20 @@ def check_content(event=None):
             input_text.tag_config("match", background="yellow")
             content_matched = True
 
+    pcre_values = suricata_parser.extract_pcre(selected_rule)
+    pattern_pcre = pcre_values[0]
+    print(pattern_pcre)
 
-    return content_matched
+    for pattern in pcre_values:
+        matcher = re.finditer(pattern, input_text_content)  # Use re.finditer to get match objects
+        for match in matcher:
+            start_index = match.start()
+            end_index = match.end()
+            input_text.tag_add("match", f"1.0+{start_index}c", f"1.0+{end_index}c")
+            input_text.tag_config("match", background="green")
+            pcre_matched = True
+
+    return content_matched, pcre_matched
 def get_content(event=None):
     input_text.tag_remove("highlight", "1.0", tk.END)
 
@@ -349,6 +350,59 @@ def export_rules():
             messagebox.showinfo("Export Successful", f"The rules have been exported to {file_path}")
         except Exception as e:
             messagebox.showerror("Export Error", f"An error occurred during export: {str(e)}")
+def show_info():
+    info_window = tk.Toplevel(root)
+    info_window.title("Info")
+    info_window.iconbitmap('assets/img/logo.ico')
+
+    # Set a fixed size for the new window
+    info_window.geometry("400x350")
+
+    # Create a Text widget
+    text_widget = tk.Text(info_window, wrap="word", width=50, height=8)
+    text_widget.pack(pady=10, padx=10)
+
+    # Define the text to be displayed
+    text = "Suricater is a tool for rule analysis. \n Using Signatures and Choose - Load file with signatures. \n Using Signatures and Export - downloand signatures based on a filter in the search bar."
+
+    # Create a base font and an italic font
+    base_font = font.Font(family="Helvetica", size=11)
+    italic_font = font.Font(family="Helvetica", size=11, weight="bold", slant="italic")
+
+    # Apply the base font to the entire Text widget
+    text_widget.configure(font=base_font)
+
+    # Insert the text into the Text widget
+    text_widget.insert("1.0", text)
+
+    # Apply the italic font to the specific words
+    def apply_italic(word):
+        start_index = "1.0"
+        while True:
+            start_index = text_widget.search(word, start_index, stopindex="end")
+            if not start_index:
+                break
+            end_index = f"{start_index}+{len(word)}c"
+            text_widget.tag_add(word, start_index, end_index)
+            start_index = end_index
+
+    apply_italic("Signatures")
+    apply_italic("Choose")
+    apply_italic("Export")
+
+    # Configure the italic tag for both words
+    text_widget.tag_configure("Signatures", font=italic_font)
+    text_widget.tag_configure("Choose", font=italic_font)
+    text_widget.tag_configure("Export", font=italic_font)
+
+    # Make the Text widget read-only
+    text_widget.config(state=tk.DISABLED)
+
+    text_widget.tag_configure("center", justify='center')
+    text_widget.tag_add("center", "1.0", "end")
+    # Add a button to close the window
+    close_button = tk.Button(info_window, text="Close", command=info_window.destroy)
+    close_button.pack(pady=10)
 
 def convert_ascii_button_action():
     select_rule(None)
@@ -382,7 +436,7 @@ menu_bar.add_cascade(label="Help", menu=help_menu)
 signatures_menu.add_command(label="Choose", command=choose_file_action)
 signatures_menu.add_command(label="Export", command=export_rules)
 help_menu.add_command(label="Documentation", command=open_documentation)
-help_menu.add_command(label="Info")
+help_menu.add_command(label="Info", command=show_info)
 
 # Initialize rules and msg_values
 rules = []
