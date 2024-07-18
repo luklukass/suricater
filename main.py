@@ -353,7 +353,7 @@ def export_rules():
 def show_info():
     info_window = tk.Toplevel(root)
     info_window.title("Info")
-    info_window.iconbitmap('assets/img/logo.ico')
+   
 
     # Set a fixed size for the new window
     info_window.geometry("400x350")
@@ -414,7 +414,6 @@ def perform_search():
 
 root = tk.Tk()
 root.title("SURICATER")
-root.iconbitmap('assets/img/logo.ico')
 root.option_add("*TCombobox*Listbox.font", "Helevetica 10")
 
 # Set the initial window size
