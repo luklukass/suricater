@@ -31,17 +31,17 @@ class SuricataRuleParser:
 
 def hex_to_ascii(match):
     hex_string = match.group(1).replace("|", "")
-    hex_values = hex_string.split()  # Split by spaces
+    hex_values = hex_string.split()  # rozdeleni pomoci mezer
     ascii_string = ""
     for hex_value in hex_values:
         try:
             char_code = int(hex_value, 16)
             if char_code == 0:
-                ascii_string += " "  # Replace null character with a space
+                ascii_string += " "  # nulu nahrad mezerou
             else:
                 ascii_string += chr(char_code)
         except ValueError:
-            ascii_string += match.group(0)  # Return the original string if conversion fails
+            ascii_string += match.group(0)  # pri chybe vrat puvodni string
     return ascii_string
 
 def get_content_in_ascii():
@@ -68,15 +68,15 @@ def get_content_in_ascii():
                 current_content = match.group(1)
                 current_properties = {}
         else:
-            if ":" in part:  # Check if the part contains a colon
-                key, value = part.split(':', 1)  # Limit the split operation to one split
+            if ":" in part:  # zkontroluj jestli cast obsahuje dvojtecku
+                key, value = part.split(':', 1)
                 current_properties[key.strip()] = value.strip() if value.strip() != 'None' else False
 
                 if "reference" in part:
                     output_list.append({current_content: current_properties})
                     break
             else:
-                # Skip parts that don't contain a colon
+                # preskoc tu cast ktera neobsahuje dvojtecku
                 continue
 
     results = []
@@ -84,7 +84,7 @@ def get_content_in_ascii():
     try:
         for sublist in output_list:
             for content, properties in sublist.items():
-                # Construct the result string with properties
+                # extrahovane data
                 result_str = (
                     f"{content}, distance: {properties.get('distance', 'None')}, "
                     f"offset: {properties.get('offset', 'None')}, "
@@ -94,7 +94,7 @@ def get_content_in_ascii():
                 )
 
                 converted_text = re.sub(r'\|([0-9A-Fa-f ]+)*\|', hex_to_ascii, result_str)
-                # Add colored text to the Text widget based on index
+                # barevne odliseni
                 index = 0
                 for part in converted_text.split(','):
                     if index == 0:
@@ -111,7 +111,7 @@ def get_content_in_ascii():
                         content_box.insert(tk.END, part, "violet")
                     index += 1
 
-                # Define text colors
+
                 content_box.tag_config("black", foreground="black")
                 content_box.tag_config("blue", foreground="blue")
                 content_box.tag_config("red", foreground="red")
@@ -121,14 +121,14 @@ def get_content_in_ascii():
 
                 results.append(converted_text)
 
-            # Insert a newline after each sublist
+
                 content_box.insert(tk.END, "\n", "black")
 
         check_content()
     except TypeError:
         pass
 
-# Function to handle rule selection and display it
+# selekce a zobrazeni zvoleneho pravidla
 def select_rule(event):
     selected_rule_index = rule_combobox.current()
     if selected_rule_index != -1 and selected_rule_index < len(filtered_rules):
@@ -154,9 +154,8 @@ def select_rule(event):
         pcre_box.tag_add("center", "1.0", "end")
         pcre_box.config(state=tk.DISABLED)
 
-        # Update the content box with the content extracted from the selected rule
         try:
-            # Update the content box with the content extracted from the selected rule
+            # zobrazeni extrahovanych dat
             content_box.config(state=tk.NORMAL)
             content_box.delete("1.0", tk.END)
             content_box.insert(tk.END, get_content())  # Call get_content only once
@@ -206,21 +205,20 @@ def open_documentation():
 def check_content(event=None):
     input_text.tag_remove("match", "1.0", tk.END)
 
-    # Get the content from the input field
+    # ziskej content z vlozeneho payloadu
     input_text_content = input_text.get("1.0", tk.END).strip()
 
-    # Get the selected rule text
+    # content z vybraneho pravidla
     selected_rule = rule_text.get("1.0", tk.END)
 
-    # Initialize a flag to track if any content pattern matches
     content_matched = False
     pcre_matched = False
     hex_regex = r'\|([0-9A-Fa-f ]+)\|'
 
-    # Extract ASCII content patterns from the rule
+    # extrahovani ASCII contentu z pravidla
     content_pattern_matches = re.findall(r'content:\s*"([^"]+)"', selected_rule)
 
-    # Convert hex values to ASCII in content_pattern_matches
+    # HEX do ASCII
     converted_content_patterns = []
     for pattern in content_pattern_matches:
         converted_pattern = re.sub(hex_regex, hex_to_ascii, pattern)
@@ -239,7 +237,7 @@ def check_content(event=None):
     print(pattern_pcre)
 
     for pattern in pcre_values:
-        matcher = re.finditer(pattern, input_text_content)  # Use re.finditer to get match objects
+        matcher = re.finditer(pattern, input_text_content)  # hledani contentu ve vlozenem payloadu
         for match in matcher:
             start_index = match.start()
             end_index = match.end()
@@ -261,9 +259,9 @@ def get_content(event=None):
 
 
     for part in rule_parts:
-        if "nocase" in part:  # Check if 'nocase' is present in the current part
-            current_properties['nocase'] = True  # Add 'nocase' to current properties with value True
-            continue  # Skip processing 'nocase' part, as it's not part of content definition
+        if "nocase" in part:
+            current_properties['nocase'] = True
+            continue
         if "content:" in part and "content:!" not in part:
             if current_content is not None:
                 output_list.append({current_content: current_properties})
@@ -273,14 +271,14 @@ def get_content(event=None):
                 current_properties = {}
 
         else:
-            if ":" in part:  # Check if the part contains a colon
-                key, value = part.split(':', 1)  # Limit the split operation to one split
+            if ":" in part:
+                key, value = part.split(':', 1)
                 current_properties[key.strip()] = value.strip() if value.strip() != 'None' else None
                 if "reference" in part:
                     output_list.append({current_content: current_properties})
                     break
             else:
-                # Skip parts that don't contain a colon
+
                 continue
 
     results = []
@@ -288,7 +286,7 @@ def get_content(event=None):
     try:
         for sublist in output_list:
             for content, properties in sublist.items():
-                # Construct the result string with properties
+
                 result_str = (
                     f"{content}, distance: {properties.get('distance', 'None')}, "
                     f"offset: {properties.get('offset', 'None')}, "
@@ -297,7 +295,7 @@ def get_content(event=None):
                     f"nocase: {properties.get('nocase', False)}"
                 )
 
-                # Add colored text to the Text widget based on index
+
                 index = 0
                 for part in result_str.split(','):
                     if index == 0:
@@ -314,7 +312,7 @@ def get_content(event=None):
                         content_box.insert(tk.END, part, "violet")
                     index += 1
 
-                # Define text colors
+
                 content_box.tag_config("black", foreground="black")
                 content_box.tag_config("blue", foreground="blue")
                 content_box.tag_config("red", foreground="red")
@@ -324,7 +322,7 @@ def get_content(event=None):
 
                 results.append(result_str)
 
-            # Insert a newline after each sublist
+
             content_box.insert(tk.END, "\n","black")
 
     except TypeError:
@@ -363,7 +361,7 @@ def show_info():
     text_widget.pack(pady=10, padx=10)
 
     # Define the text to be displayed
-    text = "Suricater is a tool for rule analysis. \n Using Signatures and Choose - Load file with signatures. \n Using Signatures and Export - downloand signatures based on a filter in the search bar."
+    text = "Suricater is a tool for signature analysis. \n Using Signatures and Choose - Load file with signatures. \n Using Signatures and Export - Download signatures based on a filter in the search bar."
 
     # Create a base font and an italic font
     base_font = font.Font(family="Helvetica", size=11)
@@ -416,48 +414,46 @@ root = tk.Tk()
 root.title("SURICATER")
 root.option_add("*TCombobox*Listbox.font", "Helevetica 10")
 
-# Set the initial window size
+# vychozi nastaveni okna
 root.minsize(1100, 900)
 root.geometry(f"1300x900")
 menu_font = ("Helvetica", 10)
-# Create a menu bar
+
+# menu
 menu_bar = tk.Menu(root)
 root.config(menu=menu_bar)
 
-# Create a File menu
+# file menu
 signatures_menu = tk.Menu(menu_bar, tearoff=0, font=menu_font)
 help_menu = tk.Menu(menu_bar, tearoff=0, font=menu_font)
 
 menu_bar.add_cascade(label="Signatures", menu=signatures_menu)
 menu_bar.add_cascade(label="Help", menu=help_menu)
 
-# Add items to the File menu
 signatures_menu.add_command(label="Choose", command=choose_file_action)
 signatures_menu.add_command(label="Export", command=export_rules)
 help_menu.add_command(label="Documentation", command=open_documentation)
 help_menu.add_command(label="Info", command=show_info)
 
-# Initialize rules and msg_values
 rules = []
 msg_values = []
 suricata_parser = SuricataRuleParser()
 filtered_rules = rules.copy()
 
-# Create a Label widget for the search title
+# search
 search_label = tk.Label(root, text="Search:", font=("Helvetica", 10))
 search_label.grid(row=0, column=0, padx=10, sticky="w")
 
-# Create a Combobox to select the "msg" option
+# combobox
 rules_label = tk.Label(root, text="Rules:", font=("Helvetica", 10))
 rules_label.grid(row=0, column=1, padx=10, sticky="w")
 
 rule_combobox = ttk.Combobox(root, values=msg_values, width=100, font=("Helvetica", 11))
 rule_combobox.grid(row=1, column=1, columnspan=8, padx=10, pady=(0, 10), sticky="w")
 
-# Enable the search functionality
 rule_combobox['state'] = 'readonly'
 
-# Create a search box Entry widget with a placeholder
+# searchbox
 search_entry = tk.Entry(root, width=40, font=("Helvetica", 11))
 search_entry.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="w")
 
@@ -465,20 +461,18 @@ search_entry.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="w")
 search_button = ttk.Button(root, text="Search", command=lambda: update_combobox_options(search_entry.get()), width=10)
 search_button.grid(row=1, column=0, padx=5, pady=(0, 10), sticky="e")
 
-# Bind <Return> event to search_entry
 search_entry.bind('<Return>', lambda event: perform_search())
 
-# Create a Label widget for the selected rule title
+# selected rule
 rule_label = tk.Label(root, text="Selected rule:", font=("Helvetica", 10))
 rule_label.grid(row=2, column=0, columnspan=9, padx=10, sticky="sw")
 
-# Create a Text widget to display the selected rule
 rule_text = tk.Text(root, wrap=tk.WORD, width=400, height=7, font=("Helvetica", 12))
 rule_text.grid(row=3, column=0, columnspan=9, padx=10, pady=(0, 5))
 rule_text.tag_configure("center", justify='center')
 rule_text.config(state=tk.DISABLED)
 
-# Scrollbar for rule_text
+# scrollball
 rule_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=rule_text.yview)
 rule_text_scrollbar.grid(row=3, column=9, sticky='ns')
 rule_text.config(yscrollcommand=rule_text_scrollbar.set)
@@ -487,54 +481,48 @@ rule_text.config(yscrollcommand=rule_text_scrollbar.set)
 convert_content_button = ttk.Button(root, text="To ASCII", command=get_content_in_ascii, width=17)
 convert_content_button.grid(row=6, column=0, pady=5, sticky="e")  # Adjust padx as needed
 
-# button to hex
+# refresh button
 convert_ascii_button = ttk.Button(root, text="Refresh", command=convert_ascii_button_action, width=17)
 convert_ascii_button.grid(row=6, column=1, padx=5, sticky="e")  # Adjust padx as needed
 
-# Create a Label widget for the content title
+# content
 content_label = tk.Label(root, text="Content:", font=("Helvetica", 10))
 content_label.grid(row=4, column=0, columnspan=9, padx=10, pady=(0, 5), sticky="sw")
 
-# Create a Text widget for the content_box
 content_box = tk.Text(root, wrap=tk.WORD, width=400, height=7, font=("Helvetica", 11))
 content_box.grid(row=5, column=0, columnspan=9, padx=10, pady=(0, 5), sticky="w")
 content_box.config(state=tk.DISABLED)
 
-# Scrollbar for content_box
 content_box_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=content_box.yview)
 content_box_scrollbar.grid(row=5, column=9, sticky='ns')
 content_box.config(yscrollcommand=content_box_scrollbar.set)
 
-# Create a Label widget for the pcre title
+# pcre
 pcre_label = tk.Label(root, text="Pcre:", font=("Helvetica", 10))
 pcre_label.grid(row=6, column=0, columnspan=9, padx=10, pady=(10, 5), sticky="sw")
 
-# Create a Text widget for the pcre_box
 pcre_box = tk.Text(root, wrap=tk.WORD, width=400, height=2, font=("Helvetica", 11))
 pcre_box.grid(row=7, column=0, columnspan=9, padx=10, pady=(0, 10), sticky="w")
 pcre_box.config(state=tk.DISABLED)
 
-# Scrollbar for pcre_box
 pcre_box_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=pcre_box.yview)
 pcre_box_scrollbar.grid(row=7, column=9, sticky='ns')
 pcre_box.config(yscrollcommand=pcre_box_scrollbar.set)
 
-# Create a Label widget for the input payload title
+# input payload
 input_label = tk.Label(root, text="Input payload:", font=("Helvetica", 10))
 input_label.grid(row=8, column=0, columnspan=8, padx=10, sticky="sw")
 
-# Create an input field as a Text widget
 input_text = tk.Text(root, wrap=tk.WORD, width=400, height=8, font=("Helvetica", 11))
 input_text.grid(row=9, column=0, columnspan=9, padx=10)
 
-# Scrollbar for input_text
 input_text_scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=input_text.yview)
 input_text_scrollbar.grid(row=9, column=9, sticky='ns')
 input_text.config(yscrollcommand=input_text_scrollbar.set)
 
 input_text.bind('<KeyRelease>', check_content)
 
-# Configure row and column weights to make them resizable
+# konfigurace oken a rozlozeni
 root.grid_rowconfigure(3, weight=1)
 root.grid_rowconfigure(4, weight=1)
 root.grid_rowconfigure(9, weight=1)
@@ -547,9 +535,9 @@ root.grid_columnconfigure(5, weight=1)
 root.grid_columnconfigure(6, weight=1)
 root.grid_columnconfigure(7, weight=1)
 root.grid_columnconfigure(8, weight=1)
-# Bind functions to events
 
 rule_combobox.bind('<<ComboboxSelected>>', select_rule)
 input_text.bind('<KeyRelease>', check_content)
-# Start the GUI event loop
+
+# start
 root.mainloop()
