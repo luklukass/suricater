@@ -1,5 +1,5 @@
 # Suricater
 
-This software should design and analysis Suricata rule easily.
+Tool for Suricata signature analysis.
 The official documentation is also included.
 
